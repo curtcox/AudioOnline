@@ -7,6 +7,10 @@ const notation = new AudioNotation.Notation({
   read: file => fetch('../vendor/' + file).then(response => { if (!response.ok) throw new Error(`${file} download failed`); return response.text(); }),
   importSource: source => import(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })))
 });
+const fetchVendor = (file, as) => fetch('../vendor/' + file).then(response => { if (!response.ok) throw new Error(`${file} download failed`); return response[as](); });
+const voices = new AudioVoice.Voices({ read: file => fetchVendor(file, 'arrayBuffer'), readText: file => fetchVendor(file, 'text'),
+  importSource: source => import(URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))) });
+const engines = AudioVoice.providers(notation, voices);
 const ENGINE_CALL = /\b(?:abc|zzfx|sfxr)\s*\(/;
 const capture = text => {
   if (outputSize > AudioCore.MAX_OUTPUT_TEXT) return;
@@ -53,7 +57,7 @@ async function run({ id, kind, src, settings }) {
     send({ type: 'started', id });
     const started = performance.now();
     let result;
-    try { result = AudioRenderer.render(notation.timeline(kind, src, options), [], notation); }
+    try { result = AudioRenderer.render(notation.timeline(kind, src, options), [], engines); }
     catch (error) {
       if (error instanceof AudioRenderer.TimelineError || error instanceof AudioNotation.NotationError) return send({ id, error: { message: error.message, line: error.line ?? null, traceback: '' }, scenes: [], output: '' });
       throw error;
@@ -62,6 +66,8 @@ async function run({ id, kind, src, settings }) {
     return send({ id, ...rest, channels, scenes: [], scene: '', output: '', ms: performance.now() - started }, channels.map(channel => channel.buffer));
   }
   const py = await loadPython(id);
+  const speaking = AudioVoice.Voices.mentioned(src).filter(name => !voices.loaded(name.slice(5)));
+  if (speaking.length) { send({ type: 'status', id, text: 'Loading voice…' }); await voices.load(speaking); }
   if (/^\s*(?:import|from)\s+numpy\b/m.test(src)) {
     send({ type: 'status', id, text: 'Loading numpy…' });
     // By name, so Pyodide checks the wheel against the pinned lockfile's SHA-256.
@@ -71,13 +77,18 @@ async function run({ id, kind, src, settings }) {
   send({ type: 'started', id });
   const started = performance.now();
   let scene;
-  try { scene = AudioPython.run(py, src, options, notation); }
-  catch (error) {
-    if (error instanceof AudioPython.SceneError) return send({ id, error: { message: error.message, line: error.line, traceback: error.traceback }, scenes: error.scenes, output: output.join('\n') });
-    throw error;
+  for (let attempt = 0; ; attempt++) {
+    try { scene = AudioPython.run(py, src, options, engines); break; }
+    catch (error) {
+      // A voice named at run time (not literally in the source) loads, then the deterministic scene runs again.
+      const voice = error instanceof AudioPython.SceneError && attempt < AudioVoice.VOICES.length && AudioVoice.missingVoice(error.message);
+      if (voice) { await voices.load([voice]); output = []; outputSize = 0; continue; }
+      if (error instanceof AudioPython.SceneError) return send({ id, error: { message: error.message, line: error.line, traceback: error.traceback }, scenes: error.scenes, output: output.join('\n') });
+      throw error;
+    }
   }
   let result;
-  try { result = AudioRenderer.render(scene.timeline, scene.buffers, notation); }
+  try { result = AudioRenderer.render(scene.timeline, scene.buffers, engines); }
   catch (error) {
     if (error instanceof AudioRenderer.TimelineError) return send({ id, error: { message: error.message, line: error.line ?? null, traceback: '' }, scenes: scene.scenes, output: output.join('\n') });
     throw error;

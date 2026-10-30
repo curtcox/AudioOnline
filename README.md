@@ -7,7 +7,7 @@
 Write a few lines of Python and hear them. Audio Online is "Manim for audio": a `Scene` places
 clips on tracks over time, and the browser renders the result to a WAV. Everything is static: no
 server, API key or build step. It is under construction: Python scenes and four compact notations
-work now; speech, effects and the gallery come next.
+and the bundled offline voice work now; effects, stems and the gallery come next.
 
 ```python
 from audio import *
@@ -51,12 +51,17 @@ class Hello(Scene):
     (`bass(pluck): c2 ~ g1 ~`), with `bpm` and `cycles` lines; one cycle is four beats. Drums:
     `bd sn hh oh cp lt mt ht rim cb cy`. `pattern(text, bpm=, cycles=, instrument=)` in Python.
   - `Note("C4", seconds, instrument)` and `Drum("cp")` place single sounds.
+- **Voice:** `self.say("text", voice="pico:en-US", speed=1, pitch=1)` speaks at the cursor on the
+  `voice` track and moves the cursor to the end; `Speech(...)` is the same as a clip. The bundled
+  SVOX Pico voices (`pico:en-US`, `en-GB`, `de-DE`, `es-ES`, `fr-FR`, `it-IT`) work offline and render
+  identical bytes in every browser. Neural voices that download on demand come later and are not part
+  of "Available offline".
 - **Download** WAV (16-bit, 24-bit or 32-bit float), the waveform as SVG or PNG, or the `.py` source.
 - Share the compressed URL, optionally shorten it through is.gd/AllOrigins, or make a QR code with
   SVG/PNG downloads. Source, files and settings travel together. Local work is restored from
   localStorage; links ask before replacing it.
 - After the status says **Available offline**, the editor, Python and numpy work offline (about
-  17 MB). Install the app through your browser's Add to Home Screen/Install action. New versions offer
+  27 MB with the voices). Install the app through your browser's Add to Home Screen/Install action. New versions offer
   **Update and reload**; the current source is saved first.
 
 Rendering is deterministic: the same scene produces byte-identical audio in Chromium, Firefox and
@@ -116,6 +121,8 @@ MIT licensed; see [LICENSE](LICENSE).
 - Ace 1.4.1: Ajax.org, BSD; [ace/LICENSE](ace/LICENSE).
 - abcjs 6.7.2 (MIT), ZzFX 1.4.0 (MIT, Frank Force) and jsfxr 1.4.1 (Unlicense), vendored unmodified;
   see [vendor/PROVENANCE.md](vendor/PROVENANCE.md).
+- SVOX Pico (Apache-2.0; SVOX AG and the Android Open Source Project) via `@echogarden/svoxpico-wasm`
+  0.2.0, with AOSP language files; see [vendor/PROVENANCE.md](vendor/PROVENANCE.md).
 - lz-string 1.5.0: [vendor/LICENSE-lz-string](vendor/LICENSE-lz-string).
 - QR encoder: Project Nayuki, MIT; full notice retained in `src/qr.js`, ported from modl via Gnuplot Online.
 - HashBin SDK v0.4.0, vendored byte for byte.

@@ -10,6 +10,7 @@ const { HashBinDocuments: Docs } = require('../../src/hashbin.js');
 const examples = require('../../src/examples.js');
 const AudioCore = require('../../src/audio-core.js');
 const golden = require('../golden.json');
+const example = id => examples.catalog.find(e => e.id === id);
 const root = path.resolve(__dirname, '../..');
 fs.mkdirSync('test-results', { recursive: true });
 let browser;
@@ -203,7 +204,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.fill('#hashbin-cid', remote); await p.click('#hashbin-load'); await edit(p, 'from audio import *\nclass NewerEdit(Scene):\n    pass\n'); release();
     await p.waitForTimeout(250); assert.match(await p.evaluate(() => editor.getValue()), /NewerEdit/);
     // A link that would replace work kept in this browser asks first.
-    await p.waitForTimeout(300); p.once('dialog', dialog => dialog.dismiss()); await p.goto(base + '?example=' + examples.catalog[1].id); await rendered(p);
+    await p.waitForTimeout(300); p.once('dialog', dialog => dialog.dismiss()); await p.goto(base + '?example=numpy-glide'); await rendered(p);
     assert.match(await p.evaluate(() => editor.getValue()), /NewerEdit/); assert.ok(!p.url().includes('example='));
     await c.close();
     const { context: auth, page: a } = await context();
@@ -245,7 +246,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     const { context: c, page: p } = await context({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: name !== 'firefox' });
     await p.goto(base); await rendered(p); assert.equal(await p.locator('#editor-pane').isVisible(), false);
     await p.click('#tab-code'); assert.equal(await p.locator('#editor-pane').isVisible(), true); assert.equal(await p.locator('#preview-pane').isVisible(), false);
-    await edit(p, examples.catalog[2].source);
+    await edit(p, example('two-scenes').source);
     await p.click('#tab-preview'); assert.equal(await p.locator('#waveform').isVisible(), true);
     assert.equal(await p.locator('#hashbin-save').isVisible(), false);
     await p.click('#more'); assert.equal(await p.locator('#more').getAttribute('aria-expanded'), 'true'); assert.equal(await p.locator('#hashbin-save').isVisible(), true);
@@ -284,8 +285,10 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       await assert.rejects(fetch(offlineBase));
       await c.route(AudioCore.PYODIDE_URL + '**', route => route.abort());
       await p.reload(); await rendered(p);
-      await edit(p, examples.catalog[1].source);
+      await edit(p, example('numpy-glide').source);
       assert.equal(await pageHash(p), golden['numpy-glide'].hash, 'numpy works offline');
+      await edit(p, example('narrated-intro').source);
+      assert.equal(await pageHash(p), golden['narrated-intro'].hash, 'the bundled voice works offline');
     } finally { await c.close(); if (server.listening) await new Promise(resolve => server.close(resolve)); }
   });
   assert.deepEqual(errors, [], 'Unexpected page errors');

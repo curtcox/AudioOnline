@@ -8,6 +8,15 @@
     "peak": 0.583324,
     "rms": 0.100022
   },
+  "narrated-intro": {
+    "hash": "72b2e406143e511509f326fdce14baf4e6d0322394c92beef484ca50149befbd",
+    "scene": "Welcome",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 410688,
+    "peak": 0.76096,
+    "rms": 0.159407
+  },
   "numpy-glide": {
     "hash": "2dedfd97c1eb208e31350492c2dfa4a292248b8c7c453ab24e9d6f549298b4b0",
     "scene": "Glide",

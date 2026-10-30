@@ -17,6 +17,20 @@ class Hello(Scene):
                  + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))
         self.add(thump, track="sfx", gain=-3)
 ` },
+  { id: 'narrated-intro', title: 'Narrated intro', tags: ['voice', 'music'], description: 'The bundled offline voice over a soft pad chord.', source: `from audio import *
+
+class Welcome(Scene):
+    """Speech on the voice track; say() moves the cursor to the end of each line."""
+
+    def construct(self):
+        chord = (Note("C4", 5, "pad") + Note("E4", 5, "pad") + Note("G4", 5, "pad")).gain(-14)
+        self.add(chord, at=0, track="music")
+        self.wait(0.6)
+        self.say("Welcome to Audio Online.")
+        self.wait(0.3)
+        self.say("Write a few lines of Python, and hear them.", speed=0.95)
+        self.add(Note("C6", 0.3, "bell").gain(-14), track="sfx")
+` },
   { id: 'numpy-glide', title: 'numpy glide', tags: ['numpy', 'synthesis'], description: 'A pitch glide computed sample by sample with numpy.', source: `import numpy as np
 from audio import *
 

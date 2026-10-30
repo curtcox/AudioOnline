@@ -11,8 +11,10 @@ import traceback
 __all__ = [
     "Scene", "Clip", "Track", "Placement", "Envelope", "adsr",
     "Sine", "Square", "Saw", "Triangle", "Noise", "Silence", "Samples",
-    "Note", "Drum", "abc", "zzfx", "sfxr", "pattern", "INSTRUMENTS", "DRUMS",
+    "Note", "Drum", "abc", "zzfx", "sfxr", "pattern", "INSTRUMENTS", "DRUMS", "Speech", "VOICES",
 ]
+
+VOICES = ("pico:en-US", "pico:en-GB", "pico:de-DE", "pico:es-ES", "pico:fr-FR", "pico:it-IT")
 
 INSTRUMENTS = ("sine", "square", "piano", "organ", "pad", "bell", "pluck")
 DRUMS = ("bd", "sn", "hh", "oh", "cp", "lt", "mt", "ht", "rim", "cb", "cy")
@@ -337,6 +339,17 @@ def pattern(text, bpm=120, cycles=1, instrument="pluck", seed=0):
     return _engine_clip(node, f"pattern({text[:40]!r})")
 
 
+def Speech(text, voice="pico:en-US", speed=1.0, pitch=1.0):
+    """Synthesized speech. The bundled Pico voices work offline: pico:en-US, en-GB, de-DE, es-ES, fr-FR, it-IT."""
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("Speech needs some text")
+    if voice not in VOICES:
+        raise ValueError(f"unknown voice {voice!r}; bundled voices are {', '.join(VOICES)}")
+    node = {"op": "speech", "text": text, "voice": voice, "speed": _number(speed, "speed", 0.5, 2), "pitch": _number(pitch, "pitch", 0.5, 2)}
+    short = text if len(text) <= 32 else text[:31] + "…"
+    return _engine_clip(node, f"say({short!r})")
+
+
 class Placement:
     """A clip at a time on a track. Methods adjust this placement and return it for chaining."""
 
@@ -437,6 +450,10 @@ class Scene:
         placement = self.add(clip, **options)
         self._time = max(self._time, placement.end)
         return placement
+
+    def say(self, text, voice="pico:en-US", speed=1.0, pitch=1.0, track="voice", **options):
+        """Speak at the cursor and move the cursor to the end of the utterance."""
+        return self.play(Speech(text, voice, speed, pitch), track=track, **options)
 
     def wait(self, seconds=1.0):
         self._time += _number(seconds, "wait", 0)

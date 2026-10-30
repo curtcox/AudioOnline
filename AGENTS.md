@@ -30,6 +30,13 @@ never `file://`.
   rewrites (engines evaluate `**` differently). abcjs is only a parser; notes play on the original
   instruments in `src/instruments.js`. Python measures notation clips synchronously through the
   `_audio_js` bridge so `self.time` matches the render. Notation documents must not load Pyodide.
+- The bundled voice is SVOX Pico (`src/voice.js`, `vendor/svoxpico/`, files pinned in
+  `tests/voice.test.js`). Pico keeps state in C globals that `pico_resetEngine` misses, so the whole WASM
+  heap is restored to its just-loaded snapshot before every utterance; without that, an utterance depends
+  on what was said before it. The module gets a module-scope `importScripts` stub because the sandbox
+  removes the real one before voices load. Voices named literally in the source load before Python
+  runs; a voice chosen at run time makes the bridge fail with `VOICE_NOT_LOADED:…`, and the worker loads
+  it and runs the scene again.
 - Web Audio, WebCodecs and other engine-specific code run only on the editor origin, for playback and
   export of bytes that were already rendered. Playback starts from a user gesture (iOS).
 - Scene errors map to the user's real lines: user code is compiled as `scene.py` with nothing
