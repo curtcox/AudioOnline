@@ -8,13 +8,16 @@ const AudioCore = {
   MAX_SECONDS: 300,
   MAX_CLIPS: 5000,
   MAX_OUTPUT_TEXT: 200000,
+  TYPES: ['python', 'abc', 'zzfx', 'sfxr', 'pattern'],
   options(value = {}) {
     const rate = Number(value.sampleRate);
     const channels = Number(value.channels);
     return {
       sampleRate: this.SAMPLE_RATES.includes(rate) ? rate : 48000,
       channels: channels === 1 ? 1 : 2,
-      scene: typeof value.scene === 'string' && /^[A-Za-z_][A-Za-z0-9_]{0,99}$/.test(value.scene) ? value.scene : ''
+      scene: typeof value.scene === 'string' && /^[A-Za-z_][A-Za-z0-9_]{0,99}$/.test(value.scene) ? value.scene : '',
+      // "auto" detects the type from the source; otherwise the Renderer selector's choice.
+      renderer: this.TYPES.includes(value.renderer) ? value.renderer : 'auto'
     };
   }
 };

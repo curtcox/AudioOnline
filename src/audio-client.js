@@ -15,7 +15,7 @@ class AudioClient {
     this.worker?.terminate(); this.worker = null;
     pending.reject(new Error(reason));
   }
-  run(src, settings = {}) {
+  run(src, settings = {}, kind = 'python') {
     this.cancel();
     if (!this.worker) this.worker = this.workerFactory();
     const worker = this.worker, id = ++this.sequence;
@@ -48,7 +48,7 @@ class AudioClient {
         } catch (error) { finish(error); }
       };
       worker.onerror = event => finish(new Error(event.message || 'Could not start the audio engine. Reload and try again.'));
-      worker.postMessage({ id, kind: 'python', src, settings: AudioCore.options(settings) });
+      worker.postMessage({ id, kind: AudioCore.TYPES.includes(kind) ? kind : 'python', src, settings: AudioCore.options(settings) });
     });
   }
   /** Results cross from the sandbox: check types, bounds and lengths before the editor uses them. */

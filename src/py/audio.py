@@ -11,7 +11,11 @@ import traceback
 __all__ = [
     "Scene", "Clip", "Track", "Placement", "Envelope", "adsr",
     "Sine", "Square", "Saw", "Triangle", "Noise", "Silence", "Samples",
+    "Note", "Drum", "abc", "zzfx", "sfxr", "pattern", "INSTRUMENTS", "DRUMS",
 ]
+
+INSTRUMENTS = ("sine", "square", "piano", "organ", "pad", "bell", "pluck")
+DRUMS = ("bd", "sn", "hh", "oh", "cp", "lt", "mt", "ht", "rim", "cb", "cy")
 
 USER_FILE = "scene.py"
 _buffers = []
@@ -232,6 +236,105 @@ def Samples(data, rate):
     _buffers.append({"rate": rate, "frames": frames, "channels": payload})
     node = {"op": "buffer", "ref": len(_buffers) - 1}
     return Clip(node, frames / rate, f"Samples({frames} frames @ {rate} Hz)")
+
+
+def _measure(node):
+    """Length in seconds from the JavaScript engines, so the cursor matches the rendered audio."""
+    import _audio_js
+    from pyodide.ffi import JsException
+    try:
+        return float(_audio_js.measure(json.dumps(node)))
+    except JsException as exc:
+        message = str(exc)
+        raise ValueError(message[7:] if message.startswith("Error: ") else message) from None
+
+
+def _engine_clip(node, label):
+    node["line"] = _user_line()
+    return Clip(node, _measure(node), label)
+
+
+def _seed(seed):
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise TypeError("seed must be a whole number")
+    return seed & 0xFFFFFFFF
+
+
+_NOTES = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+
+
+def _frequency(pitch):
+    if isinstance(pitch, str):
+        import re
+        m = re.fullmatch(r"([a-gA-G])([#b]?)(-?\d)?", pitch.strip())
+        if not m:
+            raise ValueError(f"{pitch!r} is not a note name like 'C4', 'F#3' or 'Bb2'")
+        midi = 12 * (int(m.group(3) or 4) + 1) + _NOTES[m.group(1).lower()] + {"#": 1, "b": -1, "": 0}[m.group(2)]
+    elif isinstance(pitch, int) and not isinstance(pitch, bool):
+        midi = pitch
+    else:
+        raise TypeError("pitch is a note name like 'C4' or a MIDI number")
+    if not 0 <= midi <= 135:
+        raise ValueError("pitch is outside the MIDI range")
+    return 440.0 * 2 ** ((midi - 69) / 12)
+
+
+def Note(pitch, seconds=0.5, instrument="piano", velocity=0.8):
+    """One note on a built-in instrument; the clip includes the instrument's release."""
+    if instrument not in INSTRUMENTS:
+        raise ValueError(f"instrument must be one of {', '.join(INSTRUMENTS)}")
+    node = {"op": "note", "instrument": instrument, "freq": _frequency(pitch), "seconds": _number(seconds, "note length", 0, 300),
+            "velocity": _number(velocity, "velocity", 0, 1), "seed": 0}
+    return _engine_clip(node, f"Note({pitch!r}, {instrument})")
+
+
+def Drum(name, velocity=1.0):
+    """One hit from the built-in kit: bd sn hh oh cp lt mt ht rim cb cy."""
+    if name not in DRUMS:
+        raise ValueError(f"drum must be one of {' '.join(DRUMS)}")
+    return _engine_clip({"op": "drum", "name": name, "velocity": _number(velocity, "velocity", 0, 1), "seed": 0}, f"Drum({name!r})")
+
+
+def abc(text, instrument=None, seed=0):
+    """An ABC notation tune. Without instrument, %%MIDI program choices map to the built-in instruments."""
+    if not isinstance(text, str):
+        raise TypeError("abc() needs the tune as text")
+    if instrument is not None and instrument not in INSTRUMENTS:
+        raise ValueError(f"instrument must be one of {', '.join(INSTRUMENTS)}")
+    title = next((line[2:].strip() for line in text.splitlines() if line.startswith("T:")), "tune")
+    return _engine_clip({"op": "abc", "text": text, "instrument": instrument, "seed": _seed(seed)}, f"abc({title[:40]!r})")
+
+
+def zzfx(params, seed=0):
+    """A ZzFX sound from its parameter list; None stands for a blank (default) value."""
+    if not isinstance(params, (list, tuple)) or len(params) > 21:
+        raise TypeError("zzfx() needs a list of up to 21 numbers")
+    values = [None if v is None else _number(v, "ZzFX value") for v in params]
+    return _engine_clip({"op": "zzfx", "params": values, "seed": _seed(seed)}, "zzfx(...)")
+
+
+def sfxr(sound, seed=0):
+    """An sfxr sound: a preset name such as "pickupCoin", a jsfxr sound code, or a parameter dict."""
+    node = {"op": "sfxr", "seed": _seed(seed)}
+    if isinstance(sound, dict):
+        node["params"] = sound
+    elif isinstance(sound, str) and sound in ("pickupCoin", "laserShoot", "explosion", "powerUp", "hitHurt", "jump", "blipSelect", "synth", "tone", "click", "random"):
+        node["preset"] = sound
+    elif isinstance(sound, str):
+        node["b58"] = sound
+    else:
+        raise TypeError("sfxr() needs a preset name, a sound code or a dict of parameters")
+    return _engine_clip(node, f"sfxr({sound if isinstance(sound, str) else '{...}'!s:.30})")
+
+
+def pattern(text, bpm=120, cycles=1, instrument="pluck", seed=0):
+    """A rhythm in mini-notation; one cycle is four beats. Drum names play the kit, note names the instrument."""
+    if not isinstance(text, str):
+        raise TypeError("pattern() needs the pattern as text")
+    if isinstance(cycles, bool) or not isinstance(cycles, int):
+        raise TypeError("cycles must be a whole number")
+    node = {"op": "pattern", "text": text, "bpm": _number(bpm, "bpm", 20, 400), "cycles": cycles, "instrument": instrument, "seed": _seed(seed)}
+    return _engine_clip(node, f"pattern({text[:40]!r})")
 
 
 class Placement:

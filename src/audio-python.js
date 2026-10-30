@@ -11,7 +11,12 @@ const AudioPython = {
     py.FS.writeFile('/opt/audio/audio.py', source);
     py.runPython("import sys\nif '/opt/audio' not in sys.path: sys.path.insert(0, '/opt/audio')\nimport audio");
   },
-  run(py, source, settings) {
+  /** engines.measure(node) → seconds, called synchronously from audio.py for notation and voice clips. */
+  run(py, source, settings, engines = null) {
+    py.registerJsModule('_audio_js', { measure: json => {
+      if (!engines) throw new Error('This clip needs an engine that is not loaded.');
+      return engines.measure(JSON.parse(json));
+    } });
     const proxy = py.pyimport('audio').run_scene(source, JSON.stringify(settings));
     let result;
     try { result = proxy.toJs({ dict_converter: Object.fromEntries, create_pyproxies: false }); } finally { proxy.destroy(); }

@@ -2,6 +2,12 @@
    It runs after audio-core.js, dmath.js, audio-renderer.js, audio-python.js and the SDK prelude. */
 const send = self.postMessage.bind(self);
 let python = null, output = [], outputSize = 0;
+// Notation engines are vendored files fetched through the sandbox proxy and run as blob modules.
+const notation = new AudioNotation.Notation({
+  read: file => fetch('../vendor/' + file).then(response => { if (!response.ok) throw new Error(`${file} download failed`); return response.text(); }),
+  importSource: source => import(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })))
+});
+const ENGINE_CALL = /\b(?:abc|zzfx|sfxr)\s*\(/;
 const capture = text => {
   if (outputSize > AudioCore.MAX_OUTPUT_TEXT) return;
   output.push(text); outputSize += text.length + 1;
@@ -36,7 +42,25 @@ function loadPython(id) {
 }
 async function run({ id, kind, src, settings }) {
   output = []; outputSize = 0;
-  if (kind !== 'python') throw new Error('Unknown source type.');
+  const options = AudioCore.options(settings);
+  if (kind !== 'python' && !AudioNotation.KINDS.includes(kind)) throw new Error('Unknown source type.');
+  if (kind !== 'python' && kind !== 'pattern' || ENGINE_CALL.test(src)) {
+    send({ type: 'status', id, text: 'Loading notation engines…' });
+    await notation.load();
+  }
+  if (kind !== 'python') {
+    // Notation documents never load Python.
+    send({ type: 'started', id });
+    const started = performance.now();
+    let result;
+    try { result = AudioRenderer.render(notation.timeline(kind, src, options), [], notation); }
+    catch (error) {
+      if (error instanceof AudioRenderer.TimelineError || error instanceof AudioNotation.NotationError) return send({ id, error: { message: error.message, line: error.line ?? null, traceback: '' }, scenes: [], output: '' });
+      throw error;
+    }
+    const { channels, ...rest } = result;
+    return send({ id, ...rest, channels, scenes: [], scene: '', output: '', ms: performance.now() - started }, channels.map(channel => channel.buffer));
+  }
   const py = await loadPython(id);
   if (/^\s*(?:import|from)\s+numpy\b/m.test(src)) {
     send({ type: 'status', id, text: 'Loading numpy…' });
@@ -47,13 +71,13 @@ async function run({ id, kind, src, settings }) {
   send({ type: 'started', id });
   const started = performance.now();
   let scene;
-  try { scene = AudioPython.run(py, src, AudioCore.options(settings)); }
+  try { scene = AudioPython.run(py, src, options, notation); }
   catch (error) {
     if (error instanceof AudioPython.SceneError) return send({ id, error: { message: error.message, line: error.line, traceback: error.traceback }, scenes: error.scenes, output: output.join('\n') });
     throw error;
   }
   let result;
-  try { result = AudioRenderer.render(scene.timeline, scene.buffers); }
+  try { result = AudioRenderer.render(scene.timeline, scene.buffers, notation); }
   catch (error) {
     if (error instanceof AudioRenderer.TimelineError) return send({ id, error: { message: error.message, line: error.line ?? null, traceback: '' }, scenes: scene.scenes, output: output.join('\n') });
     throw error;

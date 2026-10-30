@@ -8,7 +8,7 @@ const ShareLinks = {
     const link = new URL(url);
     link.search = ''; link.hash = '';
     const options = AudioCore.options(settings), defaults = AudioCore.options();
-    const document = Object.keys(files).length || type !== 'python' || options.sampleRate !== defaults.sampleRate || options.channels !== defaults.channels || options.scene;
+    const document = Object.keys(files).length || type !== 'python' || options.sampleRate !== defaults.sampleRate || options.channels !== defaults.channels || options.scene || options.renderer !== 'auto';
     const payload = document ? HashBinDocuments.serialize({ src, type, settings: options, files }) : src;
     // The plain fallback also contains the entire document; no data is silently lost.
     if (document) link.searchParams.set('raw', payload); else link.hash = encodeURIComponent(src);

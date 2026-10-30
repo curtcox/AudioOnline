@@ -85,6 +85,24 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     assert.equal(await pageHash(p), before);
     await c.close();
   });
+  await run('notation documents render without loading Python; the Renderer selector overrides detection', async () => {
+    const { context: c, page: p } = await context();
+    const runtime = []; c.on('request', request => { if (request.url().startsWith(AudioCore.PYODIDE_URL)) runtime.push(request.url()); });
+    await p.goto(base + '?example=drum-pattern'); await rendered(p);
+    assert.deepEqual(runtime, [], 'no Pyodide downloads for a pattern document');
+    assert.equal(await p.locator('#renderer option').first().textContent(), 'Auto (Pattern)');
+    assert.equal(await p.locator('#filename').textContent(), 'beat.pattern');
+    assert.deepEqual(await p.$$eval('#lanes .lane-name', names => names.map(n => n.textContent)), ['kick', 'snare', 'hats', 'toms', 'bass']);
+    await p.evaluate(() => editor.setValue('bpm 120\nkick: bd [sn', -1));
+    await p.waitForSelector('#error:not([hidden])'); assert.match(await p.locator('#error').innerText(), /^Line 2: Pattern: Expected "\]"/);
+    await p.evaluate(() => { document.getElementById('status').textContent = ''; });
+    await p.selectOption('#renderer', 'python'); await p.waitForSelector('#error:not([hidden])');
+    await p.waitForFunction(() => /SyntaxError/.test(document.getElementById('error').textContent));
+    assert.equal(await p.locator('#filename').textContent(), 'scene.py');
+    await p.selectOption('#renderer', 'auto'); await edit(p, 'bpm 120\nkick: bd sn');
+    assert.equal(await p.locator('#filename').textContent(), 'beat.pattern');
+    await c.close();
+  });
   await run('scene code runs in an opaque sandbox without storage, nested workers or editor access', async () => {
     const { context: c, page: p } = await context();
     await p.goto(base); await rendered(p);
@@ -127,7 +145,10 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     const { context: c, page: p } = await context();
     await p.goto(base); await rendered(p);
     await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Pause');
-    await p.waitForFunction(() => audioPlayer.position > 0.05, null, { timeout: 10000 });
+    // Headless Linux Firefox has no audio device, so its AudioContext never starts running; the clock then stays at 0.
+    const running = await p.waitForFunction(() => audioPlayer.context.state === 'running', null, { timeout: 3000 }).then(() => true, () => false);
+    if (running) await p.waitForFunction(() => audioPlayer.position > 0.05, null, { timeout: 10000 });
+    else console.log(`${name}: no running audio output; playhead advance not checked`);
     await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Play');
     const box = await p.locator('#waveform').boundingBox(); await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     assert.ok(Math.abs(await p.evaluate(() => audioPlayer.position) - 1.25) < 0.05);

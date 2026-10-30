@@ -16,7 +16,7 @@ const record = ({ result, hash, scene }) => {
 };
 // Keys are the example id, plus "id:Scene" for each further Scene in the file.
 for (const example of catalog) {
-  const first = await render(example.source);
+  const first = await render(example.source, {}, example.type || 'python');
   golden[example.id] = record(first);
   for (const scene of first.scenes.slice(1)) golden[`${example.id}:${scene}`] = record(await render(example.source, { scene }));
 }

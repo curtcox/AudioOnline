@@ -4,6 +4,7 @@
 (() => {
 const DMath = typeof module !== 'undefined' ? require('./dmath.js') : globalThis.DMath;
 const AudioCore = typeof module !== 'undefined' ? require('./audio-core.js') : globalThis.AudioCore;
+const Instruments = typeof module !== 'undefined' ? require('./instruments.js') : globalThis.Instruments;
 
 class TimelineError extends Error {
   constructor(message, line) { super(message); this.line = line; }
@@ -21,7 +22,10 @@ function rng(seed) {
 const mixSeed = (a, b) => { let h = Math.imul((a ^ 0x9e3779b9) >>> 0, 0x85ebca6b) ^ Math.imul(b + 0x632be5ab, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
 
 class Renderer {
-  constructor(timeline, buffers = []) {
+  /** providers.buffer(node) → { rate, frames, channels } for sampled clips (zzfx, sfxr, speech);
+      providers.expand(node) → an "events" node for notation clips (abc, pattern). */
+  constructor(timeline, buffers = [], providers = {}) {
+    this.providers = providers;
     if (!timeline || timeline.format !== 'audio-timeline' || timeline.version !== 1) throw new TimelineError('The scene did not produce a version 1 timeline.');
     this.rate = timeline.sampleRate;
     if (!AudioCore.SAMPLE_RATES.includes(this.rate)) throw new TimelineError(`Sample rate must be one of ${AudioCore.SAMPLE_RATES.join(', ')}.`);
@@ -29,7 +33,7 @@ class Renderer {
     this.seed = Number.isInteger(timeline.seed) ? timeline.seed : 0;
     this.timeline = timeline; this.buffers = buffers;
     this.maxFrames = AudioCore.MAX_SECONDS * this.rate;
-    this.noiseCount = 0; this.lengths = new WeakMap();
+    this.noiseCount = 0; this.lengths = new WeakMap(); this.expansions = new WeakMap(); this.resamples = new WeakMap();
   }
   /** Bounds work and recursion before rendering: user scripts build these trees. */
   check(node, depth = 0, count = { n: 0 }) {
@@ -37,6 +41,10 @@ class Renderer {
     if (depth > 200) throw new TimelineError('Clips are nested too deeply (over 200 levels).', node.line);
     if (++count.n > 100000) throw new TimelineError('The scene is too complex (more than 100,000 clip operations).');
     if (node.of) this.check(node.of, depth + 1, count);
+    if (node.events) {
+      if (!Array.isArray(node.events) || node.events.length > 20000) throw new TimelineError('Notation clips are limited to 20,000 notes.', node.line);
+      for (const e of node.events) this.check(e && e.node, depth + 1, count);
+    }
     if (node.items) {
       if (!Array.isArray(node.items) || node.items.length > 10000) throw new TimelineError('Mixes and sequences are limited to 10,000 items.', node.line);
       for (const item of node.items) this.check(item, depth + 1, count);
@@ -54,7 +62,16 @@ class Renderer {
     switch (node.op) {
       case 'osc': case 'noise': return Infinity;
       case 'silence': case 'dur': return this.toFrames(node.seconds, line);
-      case 'buffer': { const b = this.buffer(node); return Math.round(b.frames * this.rate / b.rate); }
+      case 'buffer': case 'zzfx': case 'sfxr': case 'speech': { const b = this.buffer(node); return Math.round(b.frames * this.rate / b.rate); }
+      case 'abc': case 'pattern': return this.frames(this.expanded(node));
+      case 'events': return this.toFrames(node.seconds, line);
+      case 'note': {
+        if (!Instruments.names.includes(node.instrument)) throw new TimelineError(`Unknown instrument "${String(node.instrument).slice(0, 30)}". Use one of: ${Instruments.names.join(', ')}.`, line);
+        return this.toFrames(node.seconds, line) + Math.round(Instruments.tail(node.instrument) * this.rate);
+      }
+      case 'drum':
+        if (!Instruments.drums.includes(node.name)) throw new TimelineError(`Unknown drum "${String(node.name).slice(0, 20)}". Use one of: ${Instruments.drums.join(', ')}.`, line);
+        return Instruments.drumLength(node.name, this.rate);
       case 'gain': case 'env': case 'fade': case 'filter': case 'reverse': return this.frames(node.of);
       case 'slice': {
         const n = this.frames(node.of), start = this.toFrames(node.start, line);
@@ -77,7 +94,24 @@ class Renderer {
       default: throw new TimelineError(`Unknown clip operation: ${String(node.op).slice(0, 40)}.`, line);
     }
   }
+  /** Engine errors (notation, voices) become timeline errors that keep a line. */
+  provide(work, node) {
+    try { return work(); } catch (error) { throw error instanceof TimelineError ? error : new TimelineError(String(error?.message || error), error?.line ?? node.line); }
+  }
+  expanded(node) {
+    if (!this.expansions.has(node)) {
+      if (!this.providers.expand) throw new TimelineError(`${node.op} clips need the notation engines.`, node.line);
+      const events = this.provide(() => this.providers.expand(node), node);
+      this.check(events);
+      this.expansions.set(node, events);
+    }
+    return this.expansions.get(node);
+  }
   buffer(node) {
+    if (node.op !== 'buffer') {
+      if (!this.providers.buffer) throw new TimelineError(`${node.op} clips need their engine.`, node.line);
+      return this.provide(() => this.providers.buffer(node), node);
+    }
     const b = this.buffers[node.ref];
     if (!b) throw new TimelineError('A Samples clip refers to missing audio data.', node.line);
     return b;
@@ -90,7 +124,26 @@ class Renderer {
       case 'noise': return [this.noise(node, n)];
       case 'silence': return [new Float64Array(n)];
       case 'dur': return this.fit(this.render(node.of, Math.min(n, this.frames(node))), n);
-      case 'buffer': return this.fit(this.resampled(node), n);
+      case 'buffer': case 'zzfx': case 'sfxr': case 'speech': return this.fit(this.resampled(this.buffer(node)).map(ch => ch.slice()), n);
+      case 'abc': case 'pattern': return this.render(this.expanded(node), n);
+      case 'events': {
+        let out = [new Float64Array(n)];
+        for (const e of node.events) {
+          const at = this.toFrames(e.at, node.line);
+          if (at >= n) continue;
+          out = this.add(out, this.render(e.node, Math.min(this.frames(e.node), n - at)), at);
+        }
+        return out;
+      }
+      case 'note': {
+        const held = this.toFrames(node.seconds, node.line), freq = finite(node.freq, 'Note frequency', node.line, { min: 1, max: this.rate / 2 });
+        const velocity = finite(node.velocity ?? 0.8, 'Velocity', node.line, { min: 0, max: 1 });
+        return this.fit([Instruments.note(node.instrument, freq, held, this.rate, velocity, Number.isInteger(node.seed) ? node.seed >>> 0 : 0)], n);
+      }
+      case 'drum': {
+        const velocity = finite(node.velocity ?? 1, 'Velocity', node.line, { min: 0, max: 1 });
+        return this.fit([Instruments.drum(node.name, this.rate, velocity, Number.isInteger(node.seed) ? node.seed >>> 0 : 0)], n);
+      }
       case 'gain': { const g = DMath.dbToGain(finite(node.db, 'Gain', node.line, { min: -200, max: 60 })); return this.map(this.render(node.of, n), v => v * g); }
       case 'env': return this.envelope(node, this.render(node.of, n), n);
       case 'fade': return this.fade(node, this.render(node.of, n), Math.min(n, this.frames(node.of)));
@@ -223,8 +276,12 @@ class Renderer {
     return out;
   }
   /** Windowed-sinc resampling with a precomputed Blackman kernel table. */
-  resampled(node) {
-    const b = this.buffer(node), channels = b.channels.map(ch => Float64Array.from(ch));
+  resampled(b) {
+    if (!this.resamples.has(b)) this.resamples.set(b, this.resample(b));
+    return this.resamples.get(b);
+  }
+  resample(b) {
+    const channels = b.channels.map(ch => Float64Array.from(ch));
     if (b.rate === this.rate) return channels;
     const ratio = this.rate / b.rate, cutoff = Math.min(1, ratio), half = 16, phases = 512;
     const width = Math.ceil(half / cutoff), table = new Float64Array((2 * width + 1) * phases + 1);
@@ -305,7 +362,7 @@ class Renderer {
 }
 const AudioRenderer = {
   TimelineError,
-  render(timeline, buffers) { return new Renderer(timeline, buffers).run(); }
+  render(timeline, buffers, providers) { return new Renderer(timeline, buffers, providers).run(); }
 };
 if (typeof module !== 'undefined') module.exports = AudioRenderer;
 else globalThis.AudioRenderer = AudioRenderer;

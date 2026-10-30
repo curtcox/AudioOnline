@@ -6,9 +6,8 @@
 
 Write a few lines of Python and hear them. Audio Online is "Manim for audio": a `Scene` places
 clips on tracks over time, and the browser renders the result to a WAV. Everything is static: no
-server, API key or build step. It is under construction. This first slice renders Python scenes made
-of oscillators, noise, envelopes, filters and numpy samples; speech, music and SFX notations, effects
-and the gallery come next.
+server, API key or build step. It is under construction: Python scenes and four compact notations
+work now; speech, effects and the gallery come next.
 
 ```python
 from audio import *
@@ -40,6 +39,18 @@ class Hello(Scene):
   `self.time` and advances the cursor; `self.wait(seconds)` moves the cursor. `self.track(name).gain()`
   or `.mute()` and `self.master.gain()` adjust whole tracks. Scene attributes `sample_rate`,
   `channels`, `seed` and `length` override the toolbar. Scenes are limited to 300 seconds.
+- **Notations** work as whole documents (the **Renderer** selector shows what Auto detected) and as
+  clips inside a scene. Notation documents never download Python.
+  - **ABC** tunes (`X:` and `K:` headers), played on built-in instruments: `sine`, `square`, `piano`,
+    `organ`, `pad`, `bell`, `pluck`. `%%MIDI program` picks one; `abc(text, instrument=)` in Python.
+  - **ZzFX** parameter arrays, one per line, optionally named: `coin = [1,.05,1675,,.06,.24]`;
+    `zzfx([...])` in Python (`None` for blanks).
+  - **sfxr** presets with seeds (`laserShoot 7`), jsfxr sound codes, or parameter JSON; `sfxr(...)`.
+  - **Patterns**: a Tidal-style mini-notation subset (original implementation, not Strudel):
+    `bd [~ bd] sn ~, hh*8`, `<a b>`, `x*n`, `x/n`, `x!n`, `x@w`, `x(k,n,rot)`. Lines are tracks
+    (`bass(pluck): c2 ~ g1 ~`), with `bpm` and `cycles` lines; one cycle is four beats. Drums:
+    `bd sn hh oh cp lt mt ht rim cb cy`. `pattern(text, bpm=, cycles=, instrument=)` in Python.
+  - `Note("C4", seconds, instrument)` and `Drum("cp")` place single sounds.
 - **Download** WAV (16-bit, 24-bit or 32-bit float), the waveform as SVG or PNG, or the `.py` source.
 - Share the compressed URL, optionally shorten it through is.gd/AllOrigins, or make a QR code with
   SVG/PNG downloads. Source, files and settings travel together. Local work is restored from
@@ -103,6 +114,8 @@ MIT licensed; see [LICENSE](LICENSE).
 
 - Pyodide 314.0.7 (MPL-2.0) and numpy (BSD-3-Clause), loaded from jsDelivr.
 - Ace 1.4.1: Ajax.org, BSD; [ace/LICENSE](ace/LICENSE).
+- abcjs 6.7.2 (MIT), ZzFX 1.4.0 (MIT, Frank Force) and jsfxr 1.4.1 (Unlicense), vendored unmodified;
+  see [vendor/PROVENANCE.md](vendor/PROVENANCE.md).
 - lz-string 1.5.0: [vendor/LICENSE-lz-string](vendor/LICENSE-lz-string).
 - QR encoder: Project Nayuki, MIT; full notice retained in `src/qr.js`, ported from modl via Gnuplot Online.
 - HashBin SDK v0.4.0, vendored byte for byte.

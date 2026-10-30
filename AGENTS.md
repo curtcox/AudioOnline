@@ -24,6 +24,12 @@ never `file://`.
   The same source and settings give **identical bytes in Chromium, Firefox and WebKit**. Any change
   to the renderer, `dmath.js`, `audio.py` or an example must be deliberate: run
   `node scripts/golden.mjs` and commit `tests/golden.json`; browser tests compare every engine to it.
+- Notation engines (`vendor/abcjs`, `vendor/zzfx`, `vendor/jsfxr`) stay byte-identical to their npm
+  releases (`tests/notation.test.js`). `src/notation.js` loads them as modules with a prelude: a
+  deterministic, seedable `Math` and, for ZzFX, an `AudioContext` stub and four pinned `**` → `Math.pow`
+  rewrites (engines evaluate `**` differently). abcjs is only a parser; notes play on the original
+  instruments in `src/instruments.js`. Python measures notation clips synchronously through the
+  `_audio_js` bridge so `self.time` matches the render. Notation documents must not load Pyodide.
 - Web Audio, WebCodecs and other engine-specific code run only on the editor origin, for playback and
   export of bytes that were already rendered. Playback starts from a user gesture (iOS).
 - Scene errors map to the user's real lines: user code is compiled as `scene.py` with nothing

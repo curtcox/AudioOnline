@@ -10,13 +10,14 @@ const wav = 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
 
 test('documents use the hashbin-audio format, normalize settings and still accept plain source', () => {
   const text = Docs.serialize({ src: 'from audio import *', settings: { sampleRate: 44100, channels: 1, scene: 'Intro', extra: 1 }, files: { 'kick.wav': wav } });
-  assert.deepEqual(JSON.parse(text), { format: 'hashbin-audio', version: 1, src: 'from audio import *', type: 'python', settings: { sampleRate: 44100, channels: 1, scene: 'Intro' }, files: { 'kick.wav': wav } });
-  assert.deepEqual(Docs.parse(text), { src: 'from audio import *', type: 'python', files: { 'kick.wav': wav }, settings: { sampleRate: 44100, channels: 1, scene: 'Intro' } });
-  assert.deepEqual(Docs.parse('print(1)'), { src: 'print(1)', type: 'python', files: {}, settings: { sampleRate: 48000, channels: 2, scene: '' } });
+  assert.deepEqual(JSON.parse(text), { format: 'hashbin-audio', version: 1, src: 'from audio import *', type: 'python', settings: { sampleRate: 44100, channels: 1, scene: 'Intro', renderer: 'auto' }, files: { 'kick.wav': wav } });
+  assert.deepEqual(Docs.parse(text), { src: 'from audio import *', type: 'python', files: { 'kick.wav': wav }, settings: { sampleRate: 44100, channels: 1, scene: 'Intro', renderer: 'auto' } });
+  assert.deepEqual(Docs.parse('print(1)'), { src: 'print(1)', type: 'python', files: {}, settings: { sampleRate: 48000, channels: 2, scene: '', renderer: 'auto' } });
+  assert.deepEqual(Docs.parse(Docs.serialize({ src: 'bd sn', type: 'pattern', settings: { renderer: 'pattern' } })).type, 'pattern');
   assert.deepEqual(Docs.parse('{"format":"other"}').src, '{"format":"other"}');
-  assert.deepEqual(Docs.parse(JSON.stringify({ format: 'hashbin-audio', version: 1, src: 'x', type: 'python', settings: { sampleRate: 1, scene: 'bad name!' } })).settings, { sampleRate: 48000, channels: 2, scene: '' });
+  assert.deepEqual(Docs.parse(JSON.stringify({ format: 'hashbin-audio', version: 1, src: 'x', type: 'python', settings: { sampleRate: 1, scene: 'bad name!', renderer: 'midi' } })).settings, { sampleRate: 48000, channels: 2, scene: '', renderer: 'auto' });
   assert.throws(() => Docs.parse(JSON.stringify({ format: 'hashbin-audio', version: 2, src: 'x', type: 'python' })), /Unsupported/);
-  assert.throws(() => Docs.parse(JSON.stringify({ format: 'hashbin-audio', version: 1, src: 'x', type: 'abc' })), /newer version/);
+  assert.throws(() => Docs.parse(JSON.stringify({ format: 'hashbin-audio', version: 1, src: 'x', type: 'midi' })), /newer version/);
   assert.throws(() => Docs.serialize({ src: 'x'.repeat(5 * 1024 * 1024 + 1) }), /5 MiB/);
 });
 

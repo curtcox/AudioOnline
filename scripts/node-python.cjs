@@ -7,9 +7,17 @@ const AudioPython = require('../src/audio-python.js');
 const AudioRenderer = require('../src/audio-renderer.js');
 const AudioCore = require('../src/audio-core.js');
 const Wav = require('../src/wav.js');
+const { Notation } = require('../src/notation.js');
 const root = path.join(__dirname, '..');
 
-let ready;
+let ready, engines;
+/** The notation engines, loaded from vendor/ exactly as the worker loads them (unmodified files plus a prelude). */
+async function notation() {
+  engines ||= new Notation({ read: async file => fs.readFileSync(path.join(root, 'vendor', file), 'utf8'),
+    importSource: async source => import('data:text/javascript;base64,' + Buffer.from(source).toString('base64')) });
+  await engines.load();
+  return engines;
+}
 function python() {
   ready ||= (async () => {
     const cache = path.join(root, '.pyodide-cache');
@@ -21,12 +29,17 @@ function python() {
   return ready;
 }
 /** Renders source as the worker does and returns the result plus the SHA-256 of its float32 WAV. */
-async function render(source, settings = {}) {
+async function render(source, settings = {}, kind = 'python') {
+  const options = AudioCore.options(settings), engine = await notation();
+  if (kind !== 'python') {
+    const timeline = engine.timeline(kind, source, options), result = AudioRenderer.render(timeline, [], engine);
+    return { timeline, scenes: [], scene: '', result, hash: hash(result) };
+  }
   const py = await python();
   if (/^\s*(?:import|from)\s+numpy\b/m.test(source)) await py.loadPackage('numpy', { messageCallback: () => {} });
-  const scene = AudioPython.run(py, source, AudioCore.options(settings));
-  const result = AudioRenderer.render(scene.timeline, scene.buffers);
+  const scene = AudioPython.run(py, source, options, engine);
+  const result = AudioRenderer.render(scene.timeline, scene.buffers, engine);
   return { ...scene, result, hash: hash(result) };
 }
 const hash = result => crypto.createHash('sha256').update(Wav.encode(result.channels, result.sampleRate, 'float32')).digest('hex');
-module.exports = { python, render, hash };
+module.exports = { python, notation, render, hash };

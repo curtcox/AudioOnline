@@ -34,5 +34,50 @@
     "frames": 76800,
     "peak": 0.292156,
     "rms": 0.048278
+  },
+  "abc-tune": {
+    "hash": "1c5c6dd2379b6c2258473a2947aabf6685d1e23a94bc5c0868bf1c0712512cfb",
+    "scene": "",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 717382,
+    "peak": 0.238228,
+    "rms": 0.027288
+  },
+  "drum-pattern": {
+    "hash": "e743ec7cbfa748667c05596118a6562200fe776d41aa52a8d3aef933ac45f131",
+    "scene": "",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 221538,
+    "peak": 0.773571,
+    "rms": 0.110136
+  },
+  "ui-sounds": {
+    "hash": "d894ee6a1a0bdf5cc3249ef9c4163bd42c78bc1abc658a57cac24633010e97a9",
+    "scene": "",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 137300,
+    "peak": 0.718507,
+    "rms": 0.113872
+  },
+  "sfxr-pack": {
+    "hash": "12898a4a681efd9e2bda2a94ba77ce03e5a799f546ac27f6da7adcd6e592122c",
+    "scene": "",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 149277,
+    "peak": 1.351138,
+    "rms": 0.257629
+  },
+  "notation-mix": {
+    "hash": "db39ab8b7082c37dfcb51f1c8b6f35bcc88bf297a341b4668ea140c1e9b2a3a9",
+    "scene": "Arcade",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 339840,
+    "peak": 0.954632,
+    "rms": 0.068045
   }
 }

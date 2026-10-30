@@ -31,13 +31,12 @@ const HashBinDocuments = {
       return this.isCID(candidate) ? candidate : null;
     } catch (_) { return null; }
   },
-  TYPES: ['python'],
+  get TYPES() { return AudioCore.TYPES; },
   serialize({ src, type = 'python', settings = {}, files = {} }) {
     if (typeof src !== 'string') throw new Error('Source must be text.');
     if (!this.TYPES.includes(type)) throw new Error('Unknown source type.');
     AudioFiles.validate(files, src);
-    const { sampleRate, channels, scene } = AudioCore.options(settings);
-    const doc = { format: 'hashbin-audio', version: 1, src, type, settings: { sampleRate, channels, scene }, files };
+    const doc = { format: 'hashbin-audio', version: 1, src, type, settings: AudioCore.options(settings), files };
     const payload = JSON.stringify(doc);
     if (this.bytes(payload).length > this.MAX_BYTES) throw new Error('Source and files exceed the 5 MiB HashBin limit.');
     return payload;

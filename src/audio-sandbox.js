@@ -1,7 +1,7 @@
 /* Scenes run with an opaque origin, separate from the editor's storage and service worker. */
 (() => {
 const AudioSandbox = {
-  FILES: ['audio-core.js', 'dmath.js', 'audio-renderer.js', 'audio-python.js', 'audio-worker.js'],
+  FILES: ['audio-core.js', 'dmath.js', 'instruments.js', 'mini-notation.js', 'notation.js', 'audio-renderer.js', 'audio-python.js', 'audio-worker.js'],
   factory({ loadSDK = () => import('../vendor/hashbin-sdk-v0.4.0.mjs'),
     base = new URL('src/', location.href).href,
     pyodide = globalThis.AudioCore.PYODIDE_URL,
@@ -19,7 +19,7 @@ const AudioSandbox = {
         const source = Promise.all(this.FILES.map(file => fetchSource(new URL(file, base).href))).then(parts => parts.join('\n;\n'));
         // The SDK awaits source after its frame loads; handle an earlier fetch rejection too.
         source.catch(() => {});
-        const sandbox = worker.sandbox = sdk.createSandbox({ source, origin: 'opaque', base, proxy: [pyodide, new URL('py/', base).href] });
+        const sandbox = worker.sandbox = sdk.createSandbox({ source, origin: 'opaque', base, proxy: [pyodide, new URL('py/', base).href, new URL('../vendor/', base).href] });
         sandbox.onmessage = event => { if (!worker.closed) worker.onmessage?.(event); };
         sandbox.onerror = event => { if (!worker.closed) worker.onerror?.(event); };
         for (const data of worker.queue.splice(0)) sandbox.postMessage(data);

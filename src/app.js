@@ -8,7 +8,9 @@
   editor.setTheme('ace/theme/chrome'); editor.session.setMode('ace/mode/python');
   editor.setOptions({ showPrintMargin: false, tabSize: 4, useSoftTabs: true, useWorker: false });
   let settings = AudioCore.options(), files = {}, revision = 0, applying = false, result = null, saved = null, persistTimer;
-  const snapshot = () => ({ src: editor.getValue(), type: 'python', settings: { ...settings }, files: { ...files } });
+  const FILES = { python: ['scene.py', 'Python'], abc: ['tune.abc', 'ABC notation'], zzfx: ['sounds.zzfx', 'ZzFX'], sfxr: ['sounds.sfxr', 'sfxr'], pattern: ['beat.pattern', 'pattern mini-notation'] };
+  const currentType = () => settings.renderer === 'auto' ? AudioDetector.detect(editor.getValue()).type : settings.renderer;
+  const snapshot = () => ({ src: editor.getValue(), type: currentType(), settings: { ...settings }, files: { ...files } });
   const fingerprint = () => JSON.stringify(snapshot());
   const links = () => ShareLinks.build({ url: location.href, ...snapshot(), compress: LZString.compressToEncodedURIComponent });
   const currentLink = () => saved?.fingerprint === fingerprint() ? saved.link : links().fallback;
@@ -17,7 +19,18 @@
   const setError = message => { $('error').textContent = message; $('error').hidden = !message; $('preview').classList.toggle('stale', !!message); };
   const client = new AudioClient({ onStatus: text => { $('status').textContent = text; },
     onSlow: () => { $('status').textContent = 'Still rendering…'; $('cancel').hidden = false; } });
-  const scheduler = new RenderScheduler({ detect: () => {}, render, renderDelay: 600 });
+  const scheduler = new RenderScheduler({ detect: showType, render, renderDelay: 600, detectionDelay: 250 });
+  let shownType = null;
+  /** Reflects the detected or chosen type in the selector, editor mode and file name. */
+  function showType() {
+    const type = currentType(), detected = AudioDetector.detect(editor.getValue()).type;
+    $('renderer').options[0].textContent = `Auto (${AudioDetector.LABELS[detected]})`;
+    $('renderer').value = settings.renderer;
+    if (type === shownType) return;
+    shownType = type;
+    editor.session.setMode(type === 'python' ? 'ace/mode/python' : 'ace/mode/text');
+    $('filename').textContent = FILES[type][0]; $('filetype').textContent = '/ ' + FILES[type][1];
+  }
   const player = new AudioPlayer({ canvas: $('waveform'), lanes: $('lanes'), button: $('play'), time: $('time'),
     onClip: line => { editor.gotoLine(line, 0, true); if (document.body.dataset.tab === 'preview' && matchMedia('(max-width: 760px)').matches) return; editor.focus(); } });
   globalThis.audioPlayer = player;
@@ -42,7 +55,8 @@
     $('status').textContent = result ? 'Rendering…' : 'Loading the audio engine…'; $('cancel').hidden = false;
     try {
       AudioFiles.validate(files, editor.getValue());
-      const next = await client.run(editor.getValue(), settings);
+      showType();
+      const next = await client.run(editor.getValue(), settings, currentType());
       if (ownRevision !== revision) return;
       $('cancel').hidden = true;
       annotate(null); setError(''); result = next;
@@ -80,15 +94,18 @@
     $('share-status').textContent = ''; $('cancel').hidden = true; $('status').textContent = 'Waiting for edits…';
     clearTimeout(persistTimer);
     persistTimer = setTimeout(() => { persist(); refreshShare({ address: true }); }, 180);
-    scheduler.schedule({ detect: false });
+    scheduler.schedule({ detect: true });
   }
-  function syncOptions() { $('sample-rate').value = settings.sampleRate; $('channels').value = settings.channels; }
+  function syncOptions() { $('sample-rate').value = settings.sampleRate; $('channels').value = settings.channels; $('renderer').value = settings.renderer; }
   function apply(doc) {
     const nextFiles = doc.files || {}; AudioFiles.validate(nextFiles, doc.src);
     applying = true;
-    try { files = { ...nextFiles }; settings = AudioCore.options(doc.settings); editor.setValue(doc.src, -1); editor.session.setUndoManager(new ace.UndoManager()); syncOptions(); }
+    // A saved type the detector would not choose is kept as an explicit renderer choice.
+    const options = AudioCore.options(doc.settings);
+    if (options.renderer === 'auto' && doc.type && AudioCore.TYPES.includes(doc.type) && AudioDetector.detect(doc.src).type !== doc.type) options.renderer = doc.type;
+    try { files = { ...nextFiles }; settings = options; editor.setValue(doc.src, -1); editor.session.setUndoManager(new ace.UndoManager()); syncOptions(); }
     finally { applying = false; }
-    revision++; scheduler.cancel(); client.cancel(); saved = null; persist(); render();
+    revision++; scheduler.cancel(); client.cancel(); saved = null; showType(); persist(); render();
   }
   const shareClient = new ShareClient();
   const redirect = new URL('./', location.href); redirect.search = ''; redirect.hash = '';
@@ -110,6 +127,7 @@
   $('render').onclick = () => { scheduler.cancel(); revision++; client.cancel(); render(); };
   $('cancel').onclick = () => { revision++; scheduler.cancel(); client.cancel(); $('cancel').hidden = true; $('status').textContent = 'Cancelled'; };
   $('sample-rate').onchange = $('channels').onchange = () => { settings = AudioCore.options({ ...settings, sampleRate: $('sample-rate').value, channels: $('channels').value }); changed(); };
+  $('renderer').onchange = () => { settings = AudioCore.options({ ...settings, renderer: $('renderer').value }); showType(); changed(); };
   $('scene').onchange = () => { settings = AudioCore.options({ ...settings, scene: $('scene').value }); changed(); };
   $('hide-editor').onclick = () => { document.body.classList.add('editor-hidden'); $('show-editor').hidden = false; resize(); };
   $('show-editor').onclick = () => { document.body.classList.remove('editor-hidden'); $('show-editor').hidden = true; resize(); };
@@ -127,7 +145,7 @@
   async function download() {
     try {
       const format = $('export-format').value, name = (result?.scene || 'scene').toLowerCase();
-      if (format === 'source') return AudioExport.download(editor.getValue(), 'scene.py', 'text/x-python;charset=utf-8');
+      if (format === 'source') return AudioExport.download(editor.getValue(), FILES[currentType()][0], 'text/plain;charset=utf-8');
       if (!result) throw new Error('Render the scene first.');
       if (format === 'svg' || format === 'png') {
         const svg = AudioWaveform.svg(result.channels);
@@ -180,7 +198,7 @@
       else if (parsed?.kind === 'example') {
         const sample = AudioExamples.catalog.find(item => item.id === parsed.id);
         if (!sample) throw new Error('Unknown example. Choose a sample from the gallery.');
-        const doc = { src: sample.source, files: {} };
+        const doc = { src: sample.source, type: sample.type || 'python', files: {} };
         if (acceptLink(doc)) apply(doc);
       } else if (parsed?.kind === 'cid') {
         linkLoad = true;

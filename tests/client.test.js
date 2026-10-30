@@ -59,7 +59,7 @@ test('results from the sandbox are validated before the editor uses them', () =>
   assert.deepEqual(AudioClient.validate({ id: 1, error: { message: 5, line: 0 } }).error, { message: 'The scene failed.', line: null, traceback: '' });
 });
 
-test('the sandbox runs the worker files in order with only the runtime and audio.py proxied', async () => {
+test('the sandbox runs the worker files in order, proxying only the runtime, audio.py and vendored engines', async () => {
   let options; const fetched = [];
   const sdk = { createSandbox(o) { options = o; return { postMessage() {}, terminate() {} }; } };
   globalThis.AudioCore = require('../src/audio-core.js');
@@ -67,7 +67,7 @@ test('the sandbox runs the worker files in order with only the runtime and audio
   worker.postMessage({ id: 1 });
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(options.origin, 'opaque');
-  assert.deepEqual(options.proxy, ['https://cdn.jsdelivr.net/pyodide/v314.0.7/full/', 'https://audio.hashbin.page/src/py/']);
+  assert.deepEqual(options.proxy, ['https://cdn.jsdelivr.net/pyodide/v314.0.7/full/', 'https://audio.hashbin.page/src/py/', 'https://audio.hashbin.page/vendor/']);
   assert.equal(await options.source, AudioSandbox.FILES.map(f => `/*${f}*/`).join('\n;\n'));
   worker.terminate(); delete globalThis.AudioCore;
 });
