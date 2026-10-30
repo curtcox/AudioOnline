@@ -17,6 +17,24 @@
     "peak": 0.76096,
     "rms": 0.159407
   },
+  "podcast-ducking": {
+    "hash": "5b44b317f3b11422d4d26caf7f4dc8f0dd8e12bd8a5448e8b49a0e1823f1d0f6",
+    "scene": "Episode",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 626087,
+    "peak": 0.891251,
+    "rms": 0.078605
+  },
+  "explosion": {
+    "hash": "43f5c7e7f03772039e601d459b8c3259c720bf8cc03062e09da689bb1f174778",
+    "scene": "Boom",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 237600,
+    "peak": 0.682237,
+    "rms": 0.078971
+  },
   "numpy-glide": {
     "hash": "2dedfd97c1eb208e31350492c2dfa4a292248b8c7c453ab24e9d6f549298b4b0",
     "scene": "Glide",
@@ -72,13 +90,13 @@
     "rms": 0.113872
   },
   "sfxr-pack": {
-    "hash": "12898a4a681efd9e2bda2a94ba77ce03e5a799f546ac27f6da7adcd6e592122c",
+    "hash": "d7e639cb8fd03fadfbdb7ec2907963dfe050ab9e86e80d80bc98a8755db92081",
     "scene": "",
     "sampleRate": 48000,
     "channels": 2,
     "frames": 149277,
-    "peak": 1.351138,
-    "rms": 0.257629
+    "peak": 0.891251,
+    "rms": 0.244973
   },
   "notation-mix": {
     "hash": "db39ab8b7082c37dfcb51f1c8b6f35bcc88bf297a341b4668ea140c1e9b2a3a9",

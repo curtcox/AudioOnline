@@ -7,7 +7,7 @@
 Write a few lines of Python and hear them. Audio Online is "Manim for audio": a `Scene` places
 clips on tracks over time, and the browser renders the result to a WAV. Everything is static: no
 server, API key or build step. It is under construction: Python scenes and four compact notations
-and the bundled offline voice work now; effects, stems and the gallery come next.
+the bundled offline voice and effects work now; stems, compressed export and the gallery come next.
 
 ```python
 from audio import *
@@ -51,6 +51,13 @@ class Hello(Scene):
     (`bass(pluck): c2 ~ g1 ~`), with `bpm` and `cycles` lines; one cycle is four beats. Drums:
     `bd sn hh oh cp lt mt ht rim cb cy`. `pattern(text, bpm=, cycles=, instrument=)` in Python.
   - `Note("C4", seconds, instrument)` and `Drum("cp")` place single sounds.
+- **Effects:** `Gain(db)`, `LowPass/HighPass/BandPass(freq, q)`, `Drive(amount)`,
+  `Delay(time, feedback, mix)`, `Reverb(room, damp, mix, width)`, `Compressor(threshold, ratio, attack,
+  release, makeup)` and `Limiter(ceiling, release)` go on clips with `clip.fx(...)`, on tracks with
+  `self.track("music").fx(...)` (or `self.tracks["music"]`) and on `self.master.fx(...)`. Reverb and
+  delay tails lengthen clips and the scene. Tracks also take `.pan()`, `.automate("gain", [(t, dB), …])`
+  and `.duck(under="voice", amount=-12)`, which lowers the track while another one sounds. Notation
+  documents get a −1 dBFS master limiter (inaudible below the ceiling).
 - **Voice:** `self.say("text", voice="pico:en-US", speed=1, pitch=1)` speaks at the cursor on the
   `voice` track and moves the cursor to the end; `Speech(...)` is the same as a clip. The bundled
   SVOX Pico voices (`pico:en-US`, `en-GB`, `de-DE`, `es-ES`, `fr-FR`, `it-IT`) work offline and render

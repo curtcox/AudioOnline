@@ -12,6 +12,7 @@ __all__ = [
     "Scene", "Clip", "Track", "Placement", "Envelope", "adsr",
     "Sine", "Square", "Saw", "Triangle", "Noise", "Silence", "Samples",
     "Note", "Drum", "abc", "zzfx", "sfxr", "pattern", "INSTRUMENTS", "DRUMS", "Speech", "VOICES",
+    "Effect", "Gain", "LowPass", "HighPass", "BandPass", "Drive", "Delay", "Reverb", "Compressor", "Limiter",
 ]
 
 VOICES = ("pico:en-US", "pico:en-GB", "pico:de-DE", "pico:es-ES", "pico:fr-FR", "pico:it-IT")
@@ -143,6 +144,12 @@ class Clip:
 
     def __mul__(self, count):
         return self.loop(count)
+
+    def fx(self, *effects):
+        """Apply effects in order. Reverb and delay lengthen the clip by their tails."""
+        chain = _chain(effects)
+        tail = _measure({"op": "fx-tail", "chain": chain})
+        return self._wrap("fx", duration=self._finite("adding effects") + tail, chain=chain)
 
     def __getitem__(self, key):
         if not isinstance(key, slice) or key.step is not None:
@@ -350,6 +357,76 @@ def Speech(text, voice="pico:en-US", speed=1.0, pitch=1.0):
     return _engine_clip(node, f"say({short!r})")
 
 
+class Effect:
+    """An effect for clip.fx(), track.fx() or master.fx()."""
+
+    def __init__(self, kind, **params):
+        self._json = {"type": kind, **params}
+
+    def __repr__(self):
+        args = ", ".join(f"{k}={v:g}" for k, v in self._json.items() if k != "type")
+        return f"{type(self).__name__}({args})"
+
+
+def _chain(effects):
+    if not all(isinstance(e, Effect) for e in effects):
+        raise TypeError("fx() takes effects such as Reverb(), Delay() or Compressor()")
+    if len(effects) > 32:
+        raise ValueError("effect chains hold up to 32 effects")
+    return [dict(e._json) for e in effects]
+
+
+class Gain(Effect):
+    def __init__(self, db):
+        super().__init__("gain", db=_number(db, "gain (dB)", -200, 60))
+
+
+class LowPass(Effect):
+    def __init__(self, freq, q=0.7071067811865476):
+        super().__init__("lowpass", freq=_number(freq, "filter frequency", 1, 96000), q=_number(q, "Q", 0.01, 100))
+
+
+class HighPass(Effect):
+    def __init__(self, freq, q=0.7071067811865476):
+        super().__init__("highpass", freq=_number(freq, "filter frequency", 1, 96000), q=_number(q, "Q", 0.01, 100))
+
+
+class BandPass(Effect):
+    def __init__(self, freq, q=1.0):
+        super().__init__("bandpass", freq=_number(freq, "filter frequency", 1, 96000), q=_number(q, "Q", 0.01, 100))
+
+
+class Drive(Effect):
+    """Soft saturation (tanh); amount from 0.1 (subtle) to 50 (heavy)."""
+    def __init__(self, amount=2.0):
+        super().__init__("drive", amount=_number(amount, "drive amount", 0.1, 50))
+
+
+class Delay(Effect):
+    """Feedback echo: time in seconds, feedback 0–0.95, mix 0–1."""
+    def __init__(self, time=0.25, feedback=0.35, mix=0.3):
+        super().__init__("delay", time=_number(time, "delay time", 0.001, 5), feedback=_number(feedback, "feedback", 0, 0.95), mix=_number(mix, "mix", 0, 1))
+
+
+class Reverb(Effect):
+    """Room reverb: room size, damping, wet mix and stereo width, each 0–1."""
+    def __init__(self, room=0.5, damp=0.5, mix=0.3, width=1.0):
+        super().__init__("reverb", room=_number(room, "room", 0, 1), damp=_number(damp, "damping", 0, 1), mix=_number(mix, "mix", 0, 1), width=_number(width, "width", 0, 1))
+
+
+class Compressor(Effect):
+    """Threshold in dB, ratio, attack and release in seconds, makeup gain in dB."""
+    def __init__(self, threshold=-18, ratio=4, attack=0.01, release=0.15, makeup=0):
+        super().__init__("compressor", threshold=_number(threshold, "threshold", -80, 0), ratio=_number(ratio, "ratio", 1, 50),
+                         attack=_number(attack, "attack", 0, 1), release=_number(release, "release", 0.001, 5), makeup=_number(makeup, "makeup gain", -24, 24))
+
+
+class Limiter(Effect):
+    """Keeps every sample at or below ceiling dBFS."""
+    def __init__(self, ceiling=-1, release=0.05):
+        super().__init__("limiter", ceiling=_number(ceiling, "ceiling", -60, 0), release=_number(release, "release", 0.001, 5))
+
+
 class Placement:
     """A clip at a time on a track. Methods adjust this placement and return it for chaining."""
 
@@ -386,12 +463,44 @@ class Placement:
 
 
 class Track:
-    """Settings for every clip placed on one track."""
+    """Settings for every clip placed on one track: gain, pan, effects, automation and ducking."""
 
     def __init__(self, name):
         self.name = name
         self._gain = 0.0
         self._mute = False
+        self._pan = 0.0
+        self._fx = []
+        self._automation = None
+        self._duck = None
+
+    def fx(self, *effects):
+        self._fx.extend(_chain(effects))
+        if len(self._fx) > 32:
+            raise ValueError("effect chains hold up to 32 effects")
+        return self
+
+    def pan(self, position):
+        self._pan = _number(position, "track pan", -1, 1)
+        return self
+
+    def automate(self, parameter, points):
+        """Gain automation: automate("gain", [(0, -60), (2, 0)]) interpolates (seconds, dB) points."""
+        if parameter != "gain":
+            raise ValueError("only 'gain' can be automated")
+        pts = [[_number(t, "automation time", 0, 300), _number(db, "automation level (dB)", -200, 60)] for t, db in points]
+        if not pts or any(b[0] < a[0] for a, b in zip(pts, pts[1:])):
+            raise ValueError("automation needs (time, dB) points with times that do not decrease")
+        self._automation = pts
+        return self
+
+    def duck(self, under, amount=-9, threshold=-40, attack=0.05, release=0.3):
+        """Lower this track by amount dB while track `under` is louder than threshold dBFS."""
+        if not isinstance(under, str) or under == self.name:
+            raise ValueError("duck(under=...) names another track")
+        self._duck = {"under": under, "amount": _number(amount, "duck amount", -60, 0), "threshold": _number(threshold, "duck threshold", -90, 0),
+                      "attack": _number(attack, "duck attack", 0, 5), "release": _number(release, "duck release", 0, 10)}
+        return self
 
     def gain(self, db):
         self._gain = _number(db, "track gain (dB)", -200, 60)
@@ -402,7 +511,44 @@ class Track:
         return self
 
     def _json(self):
-        return {"gain": self._gain, "mute": self._mute}
+        data = {"gain": self._gain, "mute": self._mute}
+        if self._pan:
+            data["pan"] = self._pan
+        if self._fx:
+            data["fx"] = self._fx
+        if self._automation:
+            data["automation"] = self._automation
+        if self._duck:
+            data["duck"] = self._duck
+        return data
+
+
+class _Master(Track):
+    def pan(self, position):
+        raise ValueError("the master has no pan; pan tracks or clips instead")
+
+    def duck(self, *args, **kwargs):
+        raise ValueError("the master cannot duck; duck a track instead")
+
+    def mute(self, muted=True):
+        raise ValueError("the master cannot be muted")
+
+    def _json(self):
+        data = {"gain": self._gain}
+        if self._fx:
+            data["fx"] = self._fx
+        if self._automation:
+            data["automation"] = self._automation
+        return data
+
+
+class _Tracks(dict):
+    def __init__(self, scene):
+        super().__init__()
+        self._scene = scene
+
+    def __missing__(self, name):
+        return self._scene.track(name)
 
 
 class Scene:
@@ -417,7 +563,8 @@ class Scene:
         self._placements = []
         self._time = 0.0
         self._tracks = {}
-        self.master = Track("master")
+        self.tracks = _Tracks(self)
+        self.master = _Master("master")
 
     @property
     def time(self):
@@ -431,6 +578,7 @@ class Scene:
             raise ValueError("track names are 1–64 characters")
         if name not in self._tracks:
             self._tracks[name] = Track(name)
+            dict.__setitem__(self.tracks, name, self._tracks[name])
         return self._tracks[name]
 
     def add(self, clip, at=None, track="main", gain=0, pan=0):

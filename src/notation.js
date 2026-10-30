@@ -28,15 +28,17 @@ function mathShim() {
   Object.defineProperty(shim, 'seed', { value: seed => { random = rng(seed >>> 0); } });
   return shim;
 }
+// UMD wrappers pick CommonJS or AMD when these names exist globally (as in some hosts); force the global branch.
+const UMD = 'const module = undefined, exports = undefined, define = undefined;\n';
 const MODULES = {
   // Its UMD wrapper registers on `this`, which a module leaves undefined, so it runs as a method of a root object.
-  abcjs: { file: 'abcjs/abcjs-basic-min.js', wrap: text => `const root = {};\n(function () {\n${text}\n}).call(root);\nexport default root.ABCJS;\n` },
+  abcjs: { file: 'abcjs/abcjs-basic-min.js', wrap: text => `${UMD}const root = {};\n(function () {\n${text}\n}).call(root);\nexport default root.ABCJS;\n` },
   // ZzFX also uses the ** operator, which no Math prelude can reach and which engines evaluate differently.
   // The vendored file's hash is pinned, so these exact expressions are rewritten to Math.pow at load time.
   zzfx: { file: 'zzfx/ZzFX.js', patches: [['sampleRate**3', 'Math.pow(sampleRate,3)'], ['Math.sin(t**3)', 'Math.sin(Math.pow(t,3))'],
     ['abs(s)**shapeCurve', 'Math.pow(abs(s),shapeCurve)'], ['2**(semitoneOffset/12)', 'Math.pow(2,semitoneOffset/12)']],
-  wrap: text => `const Math = globalThis.__audioOnlineMath;\nconst AudioContext = class { constructor() { this.sampleRate = 44100; } };\n${text}\n` },
-  jsfxr: { file: 'jsfxr/sfxr.js', wrap: text => `const Math = globalThis.__audioOnlineMath;\n${text}\nexport default globalThis.jsfxr;\n` }
+  wrap: text => `${UMD}const Math = globalThis.__audioOnlineMath;\nconst AudioContext = class { constructor() { this.sampleRate = 44100; } };\n${text}\n` },
+  jsfxr: { file: 'jsfxr/sfxr.js', wrap: text => `${UMD}const Math = globalThis.__audioOnlineMath;\n${text}\nexport default globalThis.jsfxr;\n` }
 };
 
 function patch(module, text) {
@@ -156,7 +158,8 @@ class Notation {
 
   /** A whole notation document as a timeline; each sound or pattern line becomes a placement. */
   timeline(kind, src, settings) {
-    const base = { format: 'audio-timeline', version: 1, sampleRate: settings.sampleRate, channels: settings.channels, seed: 0, length: null, tracks: {}, master: { gain: 0 } };
+    // A −1 dBFS limiter keeps hot presets (sfxr explosions exceed full scale) from clipping; below it, output is unchanged.
+    const base = { format: 'audio-timeline', version: 1, sampleRate: settings.sampleRate, channels: settings.channels, seed: 0, length: null, tracks: {}, master: { gain: 0, fx: [{ type: 'limiter', ceiling: -1 }] } };
     const lines = src.split('\n');
     if (kind === 'abc') {
       const title = /^T:\s*(.+)$/m.exec(src)?.[1].trim() || 'ABC tune';

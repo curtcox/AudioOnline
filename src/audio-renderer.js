@@ -5,6 +5,7 @@
 const DMath = typeof module !== 'undefined' ? require('./dmath.js') : globalThis.DMath;
 const AudioCore = typeof module !== 'undefined' ? require('./audio-core.js') : globalThis.AudioCore;
 const Instruments = typeof module !== 'undefined' ? require('./instruments.js') : globalThis.Instruments;
+const AudioEffects = typeof module !== 'undefined' ? require('./effects.js') : globalThis.AudioEffects;
 
 class TimelineError extends Error {
   constructor(message, line) { super(message); this.line = line; }
@@ -73,6 +74,11 @@ class Renderer {
         if (!Instruments.drums.includes(node.name)) throw new TimelineError(`Unknown drum "${String(node.name).slice(0, 20)}". Use one of: ${Instruments.drums.join(', ')}.`, line);
         return Instruments.drumLength(node.name, this.rate);
       case 'gain': case 'env': case 'fade': case 'filter': case 'reverse': return this.frames(node.of);
+      case 'fx': {
+        const n = this.frames(node.of);
+        if (!Number.isFinite(n)) throw new TimelineError('Give a generator a .dur() before adding effects to it.', line);
+        return n + this.effect(() => this.tailFrames(node.chain), node);
+      }
       case 'slice': {
         const n = this.frames(node.of), start = this.toFrames(node.start, line);
         const end = node.end == null ? n : Math.min(n, this.toFrames(node.end, line));
@@ -93,6 +99,10 @@ class Renderer {
       }, 0);
       default: throw new TimelineError(`Unknown clip operation: ${String(node.op).slice(0, 40)}.`, line);
     }
+  }
+  tailFrames(chain) { return AudioEffects.check(chain).reduce((sum, e) => sum + Math.round(AudioEffects.EFFECTS[e.type].tail(e) * this.rate), 0); }
+  effect(work, node) {
+    try { return work(); } catch (error) { throw error instanceof TimelineError ? error : new TimelineError(String(error?.message || error), error?.line ?? node?.line); }
   }
   /** Engine errors (notation, voices) become timeline errors that keep a line. */
   provide(work, node) {
@@ -148,6 +158,7 @@ class Renderer {
       case 'env': return this.envelope(node, this.render(node.of, n), n);
       case 'fade': return this.fade(node, this.render(node.of, n), Math.min(n, this.frames(node.of)));
       case 'filter': return this.render(node.of, n).map(ch => this.biquad(node, ch));
+      case 'fx': return this.fit(this.effect(() => AudioEffects.apply(node.chain, this.render(node.of, this.frames(node.of)), this.rate), node), n);
       case 'reverse': { const len = Math.min(n, this.frames(node.of)); return this.fit(this.render(node.of, len).map(ch => ch.slice().reverse()), n); }
       case 'slice': {
         const start = this.toFrames(node.start, node.line), len = this.frames(node);
@@ -344,25 +355,72 @@ class Renderer {
       clips.push({ track, start: at / this.rate, end: (at + len) / this.rate, line: Number.isInteger(p.line) ? p.line : null, label: String(p.label || '').slice(0, 80) });
       return { at, channels, track };
     });
-    const length = this.timeline.length == null ? end : this.toFrames(this.timeline.length);
+    const settings = this.timeline.tracks || {}, master = this.timeline.master || {};
+    for (const name of Object.keys(settings)) if (!tracks.has(name) && name.length <= 64) tracks.set(name, null);
+    // Effect tails (reverb, delay) on tracks and the master extend an inferred length.
+    const trackTail = Math.max(0, ...[...tracks.keys()].map(name => this.effect(() => this.tailFrames(settings[name]?.fx || []))));
+    const length = this.timeline.length == null ? end + trackTail + this.effect(() => this.tailFrames(master.fx || [])) : this.toFrames(this.timeline.length);
     if (length > this.maxFrames) throw new TimelineError(`Scenes are limited to ${AudioCore.MAX_SECONDS} seconds.`);
     for (const name of tracks.keys()) tracks.set(name, Array.from({ length: this.channels }, () => new Float64Array(length)));
-    for (const { at, channels, track } of placed) this.add(tracks.get(track), channels, at);
-    const settings = this.timeline.tracks || {}, master = Array.from({ length: this.channels }, () => new Float64Array(length));
-    for (const [name, buffer] of tracks) {
-      const t = settings[name] || {};
-      if (t.mute) continue;
-      const g = DMath.dbToGain(finite(t.gain ?? 0, 'Track gain', undefined, { min: -200, max: 60 }));
-      for (let c = 0; c < this.channels; c++) for (let i = 0; i < length; i++) master[c][i] += buffer[c][i] * g;
-    }
-    const mg = DMath.dbToGain(finite(this.timeline.master?.gain ?? 0, 'Master gain', undefined, { min: -200, max: 60 }));
-    return { sampleRate: this.rate, length, channels: master.map(ch => { const out = new Float32Array(length); for (let i = 0; i < length; i++) out[i] = ch[i] * mg; return out; }),
+    for (const { at, channels, track } of placed) if (at < length) this.add(tracks.get(track), this.fit(channels, Math.min(channels[0].length, length - at)), at);
+    // Ducking keys on a track after its effects and gain but before its pan, like a console sidechain.
+    const stems = new Map(), keys = new Map();
+    for (const name of this.order(tracks, settings)) stems.set(name, this.processTrack(name, tracks.get(name), settings[name] || {}, keys, length));
+    const result = { sampleRate: this.rate, length, channels: AudioRenderer.mix(stems, [...stems.keys()].filter(name => !settings[name]?.mute), master, this.rate, this.channels, length),
       tracks: [...tracks.keys()], clips };
+    Object.defineProperty(result, 'stems', { value: stems }); // kept in the worker for mute/solo and stem export
+    return result;
+  }
+  /** Ducked tracks need their key track first; cycles are errors. */
+  order(tracks, settings) {
+    const done = [], state = new Map();
+    const visit = (name, path) => {
+      if (state.get(name) === 'done') return;
+      if (state.get(name) === 'visiting') throw new TimelineError(`Ducking forms a loop: ${[...path, name].join(' → ')}.`);
+      state.set(name, 'visiting');
+      const key = settings[name]?.duck?.under;
+      if (key !== undefined) {
+        if (!tracks.has(key)) throw new TimelineError(`Track "${name}" ducks under "${String(key).slice(0, 64)}", which has no clips.`);
+        if (key === name) throw new TimelineError(`Track "${name}" cannot duck under itself.`);
+        visit(key, [...path, name]);
+      }
+      state.set(name, 'done'); done.push(name);
+    };
+    for (const name of tracks.keys()) visit(name, []);
+    return done;
+  }
+  processTrack(name, buffer, t, keys, length) {
+    return this.effect(() => {
+      let channels = this.fit(AudioEffects.apply(t.fx || [], buffer, this.rate), length);
+      const g = DMath.dbToGain(finite(t.gain ?? 0, `Track "${name}" gain`, undefined, { min: -200, max: 60 }));
+      const automation = t.automation ? AudioEffects.automation(t.automation, length, this.rate) : null;
+      const duck = t.duck ? AudioEffects.duck(keys.get(t.duck.under), length, this.rate, t.duck) : null;
+      channels = channels.map(ch => { for (let i = 0; i < length; i++) ch[i] *= g * (automation ? automation[i] : 1) * (duck ? duck[i] : 1); return ch; });
+      keys.set(name, channels);
+      const pan = finite(t.pan ?? 0, `Track "${name}" pan`, undefined, { min: -1, max: 1 });
+      if (pan !== 0 && channels.length === 2) {
+        const theta = (pan + 1) * DMath.PI / 4, norm = 1 / DMath.cos(DMath.PI / 4), left = DMath.cos(theta) * norm, right = DMath.sin(theta) * norm;
+        channels = [channels[0].map(v => v * left), channels[1].map(v => v * right)];
+      }
+      return channels;
+    });
   }
 }
 const AudioRenderer = {
   TimelineError,
-  render(timeline, buffers, providers) { return new Renderer(timeline, buffers, providers).run(); }
+  render(timeline, buffers, providers) { return new Renderer(timeline, buffers, providers).run(); },
+  /** Sums the named stems and applies the master chain, automation and gain. Mute/solo re-mixes with this. */
+  mix(stems, names, master, rate, channels, length) {
+    const sum = Array.from({ length: channels }, () => new Float64Array(length));
+    for (const name of names) { const stem = stems.get(name); if (stem) for (let c = 0; c < channels; c++) for (let i = 0; i < length; i++) sum[c][i] += stem[c][i]; }
+    let out;
+    try {
+      out = AudioEffects.apply(master.fx || [], sum, rate).map(ch => ch.length === length ? ch : ch.slice(0, length));
+      const automation = master.automation ? AudioEffects.automation(master.automation, length, rate) : null;
+      const g = DMath.dbToGain(finite(master.gain ?? 0, 'Master gain', undefined, { min: -200, max: 60 }));
+      return out.map(ch => { const f = new Float32Array(length); for (let i = 0; i < length; i++) f[i] = ch[i] * g * (automation ? automation[i] : 1); return f; });
+    } catch (error) { throw error instanceof TimelineError ? error : new TimelineError(String(error?.message || error)); }
+  }
 };
 if (typeof module !== 'undefined') module.exports = AudioRenderer;
 else globalThis.AudioRenderer = AudioRenderer;

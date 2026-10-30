@@ -31,6 +31,39 @@ class Welcome(Scene):
         self.say("Write a few lines of Python, and hear them.", speed=0.95)
         self.add(Note("C6", 0.3, "bell").gain(-14), track="sfx")
 ` },
+  { id: 'podcast-ducking', title: 'Podcast with ducking', tags: ['voice', 'music', 'effects'], description: 'A music bed that dips under the voice, then a limiter on the master.', source: `from audio import *
+
+class Episode(Scene):
+    """The music track ducks 12 dB whenever the voice track speaks."""
+
+    def construct(self):
+        groove = pattern("bd ~ [~ bd] ~, ~ sn ~ sn, hh*8", bpm=92, cycles=5)
+        chords = (Note("A2", 2.6, "pad") >> Note("F2", 2.6, "pad") >> Note("C3", 2.6, "pad") >> Note("G2", 2.6, "pad")).gain(-4)
+        self.add(groove + chords, at=0, track="music", gain=-6)
+        self.tracks["music"].fx(LowPass(5000), Compressor(-22, 3, makeup=2)).duck(under="voice", amount=-12)
+        self.wait(2.5)
+        self.say("Welcome back to the show.")
+        self.wait(0.4)
+        self.say("Today: how computers learned to speak.", speed=0.95)
+        self.track("voice").fx(HighPass(90), Compressor(-20, 2.5, makeup=3))
+        self.master.fx(Limiter(-1))
+` },
+  { id: 'explosion', title: 'Synthesized explosion', tags: ['sfx', 'effects'], description: 'Layered noise and a falling sine, driven and filtered, in a big room.', source: `from audio import *
+
+class Boom(Scene):
+    """Three layers: a sub drop, a noisy body and a crackling tail."""
+
+    seed = 7
+
+    def construct(self):
+        sub = Sine(70).env(Envelope([(0, 0), (0.01, 1), (1.2, 0)])).dur(1.4).fx(Drive(3))
+        body = Noise("brown").env(adsr(0.005, 0.4, 0.3, 1.0)).dur(1.8).fx(LowPass(900, q=1.2), Gain(6))
+        crackle = Noise().bandpass(2500, q=3).env(adsr(0.02, 0.3, 0.1, 1.2)).dur(2.0).gain(-12)
+        self.add(sub, track="low")
+        self.add(body, track="mid")
+        self.add(crackle, at=0.05, track="high", pan=0.3)
+        self.master.fx(Reverb(room=0.8, damp=0.3, mix=0.25), Compressor(-14, 4), Limiter(-1))
+` },
   { id: 'numpy-glide', title: 'numpy glide', tags: ['numpy', 'synthesis'], description: 'A pitch glide computed sample by sample with numpy.', source: `import numpy as np
 from audio import *
 

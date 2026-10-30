@@ -37,6 +37,11 @@ never `file://`.
   removes the real one before voices load. Voices named literally in the source load before Python
   runs; a voice chosen at run time makes the bridge fail with `VOICE_NOT_LOADED:…`, and the worker loads
   it and runs the scene again.
+- Effects live in `src/effects.js` under the same determinism rules; tails are whole frames per effect
+  (`Renderer.tailFrames`). Write smoothing as `g + (1 − c)(target − g)` so idle processors stay exactly
+  transparent. Tracks are processed in ducking order (cycles are errors); a duck keys on the other track
+  after its effects and gain but before its pan. The renderer keeps per-track stems (pre-master) for
+  mute/solo and stem export; `AudioRenderer.mix` applies the master.
 - Web Audio, WebCodecs and other engine-specific code run only on the editor origin, for playback and
   export of bytes that were already rendered. Playback starts from a user gesture (iOS).
 - Scene errors map to the user's real lines: user code is compiled as `scene.py` with nothing

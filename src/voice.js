@@ -113,11 +113,12 @@ class Voices {
   }
 }
 /** One provider object for the renderer and the Python bridge: speech goes to the voices, the rest to notation. */
+const effects = () => typeof module !== 'undefined' ? require('./effects.js') : globalThis.AudioEffects;
 function providers(notation, voices) {
   return {
     buffer: node => node.op === 'speech' ? voices.buffer(node) : notation.buffer(node),
     expand: node => notation.expand(node),
-    measure: node => node.op === 'speech' ? voices.measure(node) : notation.measure(node)
+    measure: node => node.op === 'speech' ? voices.measure(node) : node.op === 'fx-tail' ? effects().tail(node.chain) : notation.measure(node)
   };
 }
 /** A scene asked for a voice that is not loaded yet (the worker loads it and runs the scene again). */
