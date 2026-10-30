@@ -463,3 +463,17 @@ Saved documents follow the brief:
 4. hashbin.org registry entry and staging.
 
 **Stopping here for sign-off on D1–D7.**
+
+---
+
+## 10. Sign-off (2026-10-30)
+
+Curt approved every recommendation:
+
+- **D1:** render only in the sandbox worker, using original deterministic DSP. Encode on the editor origin.
+- **D2:** SVOX Pico is the bundled voice. The lingware caveat is accepted.
+- **D3:** write an original CMUdict-based G2P, with no GPL phonemizer.
+- **D4:** Kitten TTS nano and Kokoro-82M are available on demand.
+- **D5:** v1 accepts WAV uploads only.
+- **D6:** serve Pyodide like PythonOnline, from a pinned CDN with a verified offline cache.
+- **D7:** use a placeholder app ID until Curt supplies the real one.

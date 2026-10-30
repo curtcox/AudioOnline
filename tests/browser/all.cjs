@@ -1,0 +1,271 @@
+/* End-to-end checks against a static server, the real sandbox, Pyodide and renderer. Never a mock engine. */
+const { chromium, firefox, webkit } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const http = require('node:http');
+const path = require('node:path');
+const base = process.argv[2] || 'http://127.0.0.1:8000/';
+const name = process.argv[3] || 'chromium';
+const { HashBinDocuments: Docs } = require('../../src/hashbin.js');
+const examples = require('../../src/examples.js');
+const AudioCore = require('../../src/audio-core.js');
+const golden = require('../golden.json');
+const root = path.resolve(__dirname, '../..');
+fs.mkdirSync('test-results', { recursive: true });
+let browser;
+const errors = [];
+// Serve the pinned runtime from the identical npm/lockfile bytes when present (faster, and checked by tests/offline.test.js).
+function runtimeFile(url) {
+  const file = url.slice(AudioCore.PYODIDE_URL.length);
+  for (const candidate of [path.join(root, 'node_modules/pyodide', file), path.join(root, '.pyodide-cache', file)]) if (fs.existsSync(candidate)) return candidate;
+  return null;
+}
+async function context(options = {}) {
+  const context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: true, ...options });
+  await context.route('https://cdnjs.cloudflare.com/**', route => route.fulfill({ contentType: 'application/javascript', body: fs.readFileSync('vendor/lz-string.min.js', 'utf8') }));
+  await context.route(AudioCore.PYODIDE_URL + '**', route => {
+    const file = runtimeFile(route.request().url());
+    if (!file) return route.continue();
+    const type = file.endsWith('.wasm') ? 'application/wasm' : /\.m?js$/.test(file) ? 'text/javascript' : file.endsWith('.json') ? 'application/json' : 'application/zip';
+    return route.fulfill({ contentType: type, body: fs.readFileSync(file), headers: { 'Access-Control-Allow-Origin': '*' } });
+  });
+  // Content-Security-Policy violations count as page errors: the policy must not block the app itself.
+  await context.exposeBinding('__cspViolation', (_, text) => errors.push('CSP: ' + text));
+  await context.addInitScript(() => addEventListener('securitypolicyviolation', event => {
+    // The same Pyodide classic-worker probe, reported to the sandbox frame by Firefox.
+    if (location.pathname === 'srcdoc' && event.blockedURI === 'data' && event.violatedDirective === 'script-src-elem') return;
+    globalThis.__cspViolation?.(`${event.violatedDirective} ${event.blockedURI} ${location.pathname}`);
+  }));
+  // Pyodide probes importScripts('data:text/javascript,') to detect a classic worker and catches the refusal;
+  // desktop Firefox over BiDi still reports that CSP block as a page error. Nothing else is excused.
+  const page = await context.newPage(); page.on('pageerror', error => { if (!/blocked a script \(script-src-elem\) at data:text\/javascript,(?: from|$)/.test(error.message)) errors.push(error.message); });
+  return { context, page };
+}
+const renderedText = () => /^Rendered/.test(document.getElementById('status').textContent);
+async function rendered(page, timeout = 90000) { await page.waitForFunction(renderedText, null, { timeout }); }
+async function edit(page, source) {
+  await page.evaluate(() => { document.getElementById('status').textContent = ''; });
+  await page.evaluate(source => editor.setValue(source, -1), source);
+  await rendered(page);
+}
+/** SHA-256 of the float32 WAV of the current render, computed in the page. */
+const pageHash = page => page.evaluate(async () => {
+  const r = audioPlayer.result, digest = await crypto.subtle.digest('SHA-256', Wav.encode(r.channels, r.sampleRate, 'float32'));
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+});
+function cidFor(text) {
+  const n = Buffer.byteLength(text), prefix = Buffer.alloc(6); prefix.writeUIntBE(n, 0, 6);
+  return prefix.toString('base64url') + (n <= 64 ? Buffer.from(text) : Buffer.alloc(64, 7)).toString('base64url');
+}
+// Desktop Firefox (BiDi) saves into a real folder and numbers repeated names: name(1).ext.
+const named = file => new RegExp('^' + file.replace(/\./g, '(?:\\(\\d+\\))?\\.') + '$');
+const isCIDHash = hash => Docs.isCID(hash.slice(1));
+async function run(label, task) { const start = Date.now(); await task(); console.log(`${name}: ${label} (${Date.now() - start} ms)`); }
+(async () => {
+  // FIREFOX_PATH drives a desktop Firefox over WebDriver BiDi where Playwright's build cannot launch (macOS 27).
+  browser = name === 'firefox' && process.env.FIREFOX_PATH
+    ? await firefox.launch({ headless: true, channel: 'moz-firefox', executablePath: process.env.FIREFOX_PATH })
+    : await ({ chromium, firefox, webkit }[name]).launch({ headless: true });
+  await run('every example renders the golden bytes in this engine, deterministically', async () => {
+    const { context: c, page: p } = await context();
+    for (const sample of examples.catalog) {
+      await p.goto(base + '?example=' + sample.id); await rendered(p);
+      assert.equal(await p.evaluate(() => editor.getValue()), sample.source);
+      assert.equal(await pageHash(p), golden[sample.id].hash, sample.id);
+      const scenes = await p.$$eval('#scene option', options => options.map(o => o.value));
+      for (const scene of scenes.slice(1)) {
+        await p.evaluate(() => { document.getElementById('status').textContent = ''; });
+        await p.selectOption('#scene', scene); await rendered(p);
+        assert.equal(await pageHash(p), golden[`${sample.id}:${scene}`].hash, `${sample.id}:${scene}`);
+      }
+    }
+    // Render the same scene again: identical bytes.
+    const before = await pageHash(p);
+    await p.evaluate(() => { document.getElementById('status').textContent = ''; }); await p.click('#render'); await rendered(p);
+    assert.equal(await pageHash(p), before);
+    await c.close();
+  });
+  await run('scene code runs in an opaque sandbox without storage, nested workers or editor access', async () => {
+    const { context: c, page: p } = await context();
+    await p.goto(base); await rendered(p);
+    assert.equal(await p.locator('iframe[title="Code sandbox"]').getAttribute('sandbox'), 'allow-scripts');
+    await p.evaluate(async () => {
+      localStorage.setItem('audio-isolation-probe', 'editor-only');
+      await (await caches.open('audio-isolation-probe')).put('/private-sentinel', new Response('editor-only'));
+    });
+    await edit(p, [
+      'import js',
+      'from audio import *',
+      'found = {n: getattr(js, n, None) is not None for n in ["caches", "indexedDB", "localStorage", "Worker", "SharedWorker", "importScripts"]}',
+      'print("origin", js.self.origin, "parent", getattr(js, "parent", None) is not None, sorted(k for k, v in found.items() if v))',
+      'class S(Scene):',
+      '    def construct(self):',
+      '        self.add(Sine(1).dur(0.01))'
+    ].join('\n'));
+    assert.equal(await p.locator('#output').textContent(), 'origin null parent False []');
+    await p.evaluate(async () => { localStorage.removeItem('audio-isolation-probe'); await caches.delete('audio-isolation-probe'); });
+    await c.close();
+  });
+  await run('diagnostics keep the last good render; lanes jump to source; cancel stops runaway code', async () => {
+    const { context: c, page: p } = await context();
+    await p.goto(base); await rendered(p);
+    assert.equal(await p.locator('#lanes .lane').count(), 3);
+    await p.locator('#lanes .lane').nth(2).locator('.clip').click();
+    assert.equal(await p.evaluate(() => editor.getCursorPosition().row + 1), 15);
+    await p.evaluate(() => editor.setValue('from audio import *\nclass S(Scene):\n    def construct(self):\n        self.add(Sine(3))\n', -1));
+    await p.waitForSelector('#error:not([hidden])'); assert.match(await p.locator('#error').innerText(), /^Line 4: ValueError: give Sine\(3\) a duration/);
+    await p.waitForSelector('.ace_gutter-cell.scene-error'); assert.ok(await p.locator('#preview.stale').count());
+    assert.ok(await p.evaluate(() => audioPlayer.result.length > 0), 'last good render is kept');
+    await p.evaluate(() => editor.setValue('from audio import *\nprint("spinning")\nwhile True:\n    pass\n', -1));
+    await p.waitForSelector('#cancel:not([hidden])', { timeout: 20000 }); await p.waitForFunction(() => /Still rendering/.test(document.getElementById('status').textContent));
+    await p.click('#cancel'); assert.equal(await p.locator('#status').textContent(), 'Cancelled');
+    assert.equal(await p.locator('iframe[title="Code sandbox"]').count(), 0, 'cancel terminates the sandbox');
+    await edit(p, examples.defaultSource); assert.equal(await p.locator('#preview.stale').count(), 0);
+    await c.close();
+  });
+  await run('playback, seeking and downloads', async () => {
+    const { context: c, page: p } = await context();
+    await p.goto(base); await rendered(p);
+    await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Pause');
+    await p.waitForFunction(() => audioPlayer.position > 0.05, null, { timeout: 10000 });
+    await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Play');
+    const box = await p.locator('#waveform').boundingBox(); await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    assert.ok(Math.abs(await p.evaluate(() => audioPlayer.position) - 1.25) < 0.05);
+    const expected = { pcm16: 44 + 120000 * 4, pcm24: 44 + 120000 * 6, float32: 44 + 120000 * 8 };
+    for (const format of ['pcm16', 'pcm24', 'float32', 'svg', 'png', 'source']) {
+      await p.selectOption('#export-format', format);
+      const pending = p.waitForEvent('download'); await p.click('#download'); const download = await pending;
+      const content = fs.readFileSync(await download.path());
+      if (expected[format]) { assert.match(download.suggestedFilename(), named('hello.wav')); assert.equal(content.subarray(0, 4).toString(), 'RIFF'); assert.equal(content.length, expected[format]); }
+      if (format === 'svg') { assert.match(download.suggestedFilename(), named('hello-waveform.svg')); assert.match(content.toString(), /^<svg/); }
+      if (format === 'png') assert.equal(content.subarray(1, 4).toString(), 'PNG');
+      if (format === 'source') { assert.match(download.suggestedFilename(), named('scene.py')); assert.equal(content.toString(), examples.defaultSource); }
+    }
+    await c.close();
+  });
+  await run('sharing, settings, QR and shortener', async () => {
+    const { context: c, page: p } = await context(); await p.goto(base); await rendered(p);
+    await edit(p, 'from audio import *\nclass Shared(Scene):\n    def construct(self):\n        self.play(Sine(330).dur(0.3))\n');
+    await p.click('#share');
+    let link = await p.inputValue('#share-url'); assert.ok(new URL(link).searchParams.has('compressed'));
+    const p2 = await c.newPage(); p2.on('dialog', dialog => dialog.accept()); await p2.goto(link); await rendered(p2); assert.match(await p2.evaluate(() => editor.getValue()), /class Shared/);
+    await p.evaluate(() => { document.getElementById('status').textContent = ''; });
+    await p.selectOption('#sample-rate', '22050'); await rendered(p); await p.click('#share');
+    link = await p.inputValue('#share-url'); assert.ok(new URL(link).searchParams.has('doc'));
+    await p2.goto(link); await rendered(p2); assert.equal(await p2.inputValue('#sample-rate'), '22050');
+    assert.equal(await p2.evaluate(() => audioPlayer.result.sampleRate), 22050);
+    await p.click('#qr-open'); await p.waitForSelector('#qr-code svg'); assert.equal(await p.locator('#qr-url').innerText(), link); assert.match(await p.locator('#qr-message').innerText(), /computer/);
+    const download = p.waitForEvent('download'); await p.click('#qr-svg'); assert.match((await download).suggestedFilename(), named('scene-qr.svg')); await p.click('[data-close="qr-dialog"]');
+    await p.route('https://api.allorigins.win/**', route => route.fulfill({ json: { contents: 'https://is.gd/test123' } }));
+    await p.click('#shorten'); await p.waitForFunction(() => document.getElementById('share-url').value === 'https://is.gd/test123');
+    // Settings survive the localStorage restore.
+    await p.goto(base); await rendered(p); assert.equal(await p.inputValue('#sample-rate'), '22050');
+    await c.close();
+  });
+  await run('HashBin inline CIDs, stale loads, links that ask first and mocked Publish saves', async () => {
+    const { context: c, page: p } = await context();
+    const bare = 'from audio import *\nclass Cid(Scene):\n    pass\n', inline = cidFor(bare);
+    assert.ok(bare.length <= 64);
+    await p.goto(base + '#' + inline); await rendered(p); assert.match(await p.evaluate(() => editor.getValue()), /class Cid/);
+    // The policy is live: a script from an unlisted host is refused and reported.
+    await p.evaluate(() => { const script = document.createElement('script'); script.src = 'https://example.invalid/injected.js'; document.head.append(script); });
+    await new Promise(resolve => { const wait = () => errors.some(e => e.includes('example.invalid')) ? resolve() : setTimeout(wait, 50); wait(); });
+    errors.splice(0, errors.length, ...errors.filter(e => !e.includes('example.invalid')));
+    const registeredClient = /name="hashbin-client-id" content="([^"]+)"/.exec(fs.readFileSync('index.html', 'utf8'))[1];
+    await p.route('https://hashbin.org/sdk/v0.4.0/hashbin.js', route => route.fulfill({ contentType: 'application/javascript', body: `export class HashBinClient {
+      constructor(options) { if (options.clientId !== ${JSON.stringify(registeredClient)} || options.redirectUri !== ${JSON.stringify(new URL('./', base).href)}) throw new Error('Incorrect HashBin registration configuration'); }
+    }` }));
+    await p.click('#hashbin-save'); await p.waitForFunction(() => document.getElementById('hashbin-confirm').textContent === 'Review on HashBin' && !document.getElementById('hashbin-confirm').disabled); assert.match(await p.locator('#hashbin-message').innerText(), /approve the save on hashbin\.org/); await p.click('#hashbin-close');
+    const payload = Docs.serialize({ src: 'from audio import *\nclass SlowOld(Scene):\n    pass\n', settings: {}, files: {} }), remote = cidFor(payload);
+    let release; const pending = new Promise(resolve => { release = resolve; });
+    await p.route('https://256t.us/' + remote, async route => { await pending; await route.fulfill({ body: payload }); });
+    await p.fill('#hashbin-cid', remote); await p.click('#hashbin-load'); await edit(p, 'from audio import *\nclass NewerEdit(Scene):\n    pass\n'); release();
+    await p.waitForTimeout(250); assert.match(await p.evaluate(() => editor.getValue()), /NewerEdit/);
+    // A link that would replace work kept in this browser asks first.
+    await p.waitForTimeout(300); p.once('dialog', dialog => dialog.dismiss()); await p.goto(base + '?example=' + examples.catalog[1].id); await rendered(p);
+    assert.match(await p.evaluate(() => editor.getValue()), /NewerEdit/); assert.ok(!p.url().includes('example='));
+    await c.close();
+    const { context: auth, page: a } = await context();
+    await auth.route(base + '**', async route => {
+      if (route.request().isNavigationRequest()) { const html = fs.readFileSync('index.html', 'utf8').replace(/name="hashbin-client-id" content="[^"]*"/, 'name="hashbin-client-id" content="test-client"'); await route.fulfill({ contentType: 'text/html', body: html }); } else await route.continue();
+    });
+    // Stands in for the pinned SDK: popup approval, cancellation, a blocked popup's redirect round trip and revocation.
+    const sdk = `const encode=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');
+    async function cid(text){const bytes=new TextEncoder().encode(text),size=new Uint8Array(6);new DataView(size.buffer).setUint32(2,bytes.length);return encode(size)+encode(bytes.length<=64?bytes:new Uint8Array(await crypto.subtle.digest('SHA-512',bytes)));}
+    export class HashBinClient {
+      constructor(options){this.options=options}
+      publish(content,{clientState}){const mode=localStorage.getItem('test:publish')||'approve';return cid(content).then(saved=>{
+        if(mode==='cancel')throw new Error('access_denied');
+        if(mode==='redirect'){sessionStorage.setItem('test:state',JSON.stringify(clientState));location.href=this.options.redirectUri+'#hashbin_publish=t&cid='+saved;return {redirected:true};}
+        return {cid:saved};});}
+      async handlePublishCallback({hash}){const clientState=JSON.parse(sessionStorage.getItem('test:state'));return {cid:new URLSearchParams(hash.slice(1)).get('cid'),clientState};}
+      async disconnect(){localStorage.removeItem('hashbin:tokens:test-client');localStorage.setItem('test:revoked','yes');}
+    }`;
+    await auth.route('https://hashbin.org/sdk/v0.4.0/hashbin.js', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
+    await auth.addInitScript(() => {
+      if (window !== window.top) return;
+      // Firefox over BiDi also runs this in other documents where storage throws SecurityError.
+      try { if (!sessionStorage.getItem('test:seeded')) { sessionStorage.setItem('test:seeded', '1'); localStorage.setItem('hashbin:tokens:test-client', '{"refreshToken":"old"}'); } } catch (_) { /* not this test's page */ }
+    });
+    await a.goto(base); await rendered(a); await a.waitForFunction(() => localStorage.getItem('test:revoked') === 'yes' && !localStorage.getItem('hashbin:tokens:test-client'));
+    const save = async () => { await a.click('#hashbin-save'); await a.waitForFunction(() => document.getElementById('hashbin-confirm').textContent === 'Review on HashBin' && !document.getElementById('hashbin-confirm').disabled); };
+    await edit(a, 'from audio import *\nclass PopupSave(Scene):\n    pass\n'); await a.waitForTimeout(300);
+    await save(); await a.click('#hashbin-confirm'); await a.waitForFunction(() => document.getElementById('hashbin-status').textContent === 'Saved to HashBin.'); assert.ok(isCIDHash(new URL(a.url()).hash), a.url()); await a.click('#hashbin-close');
+    await a.evaluate(() => localStorage.setItem('test:publish', 'cancel')); await edit(a, 'from audio import *\nclass Cancelled(Scene):\n    pass\n'); await save(); await a.click('#hashbin-confirm');
+    await a.waitForFunction(() => /cancelled on HashBin/.test(document.getElementById('hashbin-message').textContent)); await a.click('#hashbin-close');
+    await a.evaluate(() => localStorage.setItem('test:publish', 'redirect')); await edit(a, 'from audio import *\nclass Restored(Scene):\n    pass\n'); await a.waitForTimeout(300); await save();
+    await Promise.all([a.waitForURL('**#hashbin_publish=*'), a.click('#hashbin-confirm')]); await rendered(a);
+    await a.waitForFunction(() => document.getElementById('hashbin-status').textContent === 'Saved to HashBin.'); assert.match(await a.evaluate(() => editor.getValue()), /class Restored/); assert.ok(isCIDHash(new URL(a.url()).hash));
+    await a.evaluate(() => localStorage.removeItem('test:publish'));
+    await edit(a, 'from audio import *\nclass After(Scene):\n    pass\n'); await a.waitForFunction(() => !location.hash); assert.ok(new URL(a.url()).searchParams.has('compressed'));
+    await auth.close();
+  });
+  await run('phone tabs, More menu, touch-sized controls and no horizontal overflow', async () => {
+    const { context: c, page: p } = await context({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: name !== 'firefox' });
+    await p.goto(base); await rendered(p); assert.equal(await p.locator('#editor-pane').isVisible(), false);
+    await p.click('#tab-code'); assert.equal(await p.locator('#editor-pane').isVisible(), true); assert.equal(await p.locator('#preview-pane').isVisible(), false);
+    await edit(p, examples.catalog[2].source);
+    await p.click('#tab-preview'); assert.equal(await p.locator('#waveform').isVisible(), true);
+    assert.equal(await p.locator('#hashbin-save').isVisible(), false);
+    await p.click('#more'); assert.equal(await p.locator('#more').getAttribute('aria-expanded'), 'true'); assert.equal(await p.locator('#hashbin-save').isVisible(), true);
+    assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    for (const selector of ['#tab-code', '#tab-preview', '#render', '#more', '#play', '#download', '#qr-open']) { const box = await p.locator(selector).boundingBox(); assert.ok(box.height >= 40, selector); }
+    // Playwright's Firefox BiDi mode does not dispatch synthetic taps; a click is the same user gesture there.
+    if (process.env.FIREFOX_PATH && name === 'firefox') await p.click('#play'); else await p.tap('#play');
+    assert.equal(await p.locator('#play').textContent(), 'Pause');
+    await p.screenshot({ path: `test-results/${name}-mobile.png`, fullPage: true }); await c.close();
+  });
+  await run('offline reload and render with the origin stopped', async () => {
+    // Real origin failure avoids browser-specific offline-emulation behavior.
+    const server = http.createServer((request, response) => {
+      try {
+        const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+        const file = path.resolve(root, '.' + (pathname.endsWith('/') ? pathname + 'index.html' : pathname));
+        if (!file.startsWith(root + path.sep)) { response.writeHead(403).end(); return; }
+        const types = { '.html': 'text/html', '.js': 'application/javascript', '.mjs': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.py': 'text/plain' };
+        response.setHeader('Content-Type', types[path.extname(file)] || 'text/plain'); response.end(fs.readFileSync(file));
+      } catch (_) { response.writeHead(404).end(); }
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const offlineBase = `http://127.0.0.1:${server.address().port}/`;
+    const { context: c, page: p } = await context({ serviceWorkers: 'allow' });
+    try {
+      await p.goto(offlineBase); await rendered(p);
+      await p.waitForFunction(() => document.getElementById('offline-status').textContent === 'Available offline', null, { timeout: 120000 });
+      await p.waitForFunction(() => !!navigator.serviceWorker.controller);
+      await p.reload(); await rendered(p);
+      // Anything on this origin can write Cache Storage; altered entries are never served.
+      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('src/qr.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
+      await p.reload(); await rendered(p); assert.equal(await p.evaluate(() => globalThis.poisonedCache), undefined);
+      await p.waitForFunction(() => document.getElementById('offline-status').textContent === 'Offline setup incomplete', null, { timeout: 45000 });
+      await p.click('#offline-action'); await p.waitForFunction(() => document.getElementById('offline-status').textContent === 'Available offline', null, { timeout: 120000 });
+      await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
+      await assert.rejects(fetch(offlineBase));
+      await c.route(AudioCore.PYODIDE_URL + '**', route => route.abort());
+      await p.reload(); await rendered(p);
+      await edit(p, examples.catalog[1].source);
+      assert.equal(await pageHash(p), golden['numpy-glide'].hash, 'numpy works offline');
+    } finally { await c.close(); if (server.listening) await new Promise(resolve => server.close(resolve)); }
+  });
+  assert.deepEqual(errors, [], 'Unexpected page errors');
+})().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });

@@ -1,0 +1,38 @@
+{
+  "hello": {
+    "hash": "cffa57254e7f8cc1c61e9ff377014d3181773b8341f5383f387644e4f306f3f0",
+    "scene": "Hello",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 120000,
+    "peak": 0.583324,
+    "rms": 0.100022
+  },
+  "numpy-glide": {
+    "hash": "2dedfd97c1eb208e31350492c2dfa4a292248b8c7c453ab24e9d6f549298b4b0",
+    "scene": "Glide",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 100800,
+    "peak": 0.352971,
+    "rms": 0.171493
+  },
+  "two-scenes": {
+    "hash": "cba15572e1c8e202a953bcab414844aefdbb76bfaeee1fa9ccb50cf0eeb4718b",
+    "scene": "Rise",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 34560,
+    "peak": 0.151868,
+    "rms": 0.072492
+  },
+  "two-scenes:Fall": {
+    "hash": "a2bcacfda73b126871ec74ec936fe362b95e5e66ececf15d0cf2fd58afeb0af6",
+    "scene": "Fall",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 76800,
+    "peak": 0.292156,
+    "rms": 0.048278
+  }
+}

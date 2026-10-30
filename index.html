@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IMEqdP+AkCKdxhM3X7mQM4pV/chykJXPvdtndD+XeH8=' blob: 'wasm-unsafe-eval' https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/ https://hashbin.org/sdk/v0.4.0/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://256t.us https://hashbin.org https://api.allorigins.win https://cdn.jsdelivr.net/pyodide/v314.0.7/full/; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#5b3fd1"><meta name="description" content="Write Python and hear it: speech, music and sound effects rendered in your browser. No server, free and available offline.">
+<meta name="hashbin-client-id" content="app_00000000-0000-0000-0000-000000000000"><!-- PLACEHOLDER until Curt registers the app; the public OAuth client ID is not a secret. -->
+<title>Audio Online — code into sound</title>
+<link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icons/icon-180.png"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="src/app.css?v=1">
+</head>
+<body data-tab="preview">
+<header><div class="brand"><span class="brand-mark" aria-hidden="true">♫</span><div><h1>Audio Online</h1><small>CODE INTO SOUND</small></div></div><p class="tagline">A few lines. A whole soundscape.</p><a class="github" href="https://github.com/curtcox/AudioOnline" target="_blank" rel="noopener" aria-label="Fork Audio Online on GitHub">Fork on GitHub ↗</a></header>
+<div class="toolbar" role="toolbar" aria-label="Audio controls">
+<div class="phone-bar"><div class="mobile-tabs" role="tablist" aria-label="Workspace"><button id="tab-preview" role="tab" aria-controls="preview-pane" aria-selected="true">Preview</button><button id="tab-code" role="tab" aria-controls="editor-pane" aria-selected="false">Code</button></div>
+<button id="render" class="primary">Render</button><button id="more" aria-expanded="false" aria-controls="extra-tools">More</button></div>
+<label>Rate <select id="sample-rate" aria-label="Sample rate"><option value="48000">48 kHz</option><option value="44100">44.1 kHz</option><option value="32000">32 kHz</option><option value="22050">22.05 kHz</option></select></label>
+<label class="channels-label">Channels <select id="channels"><option value="2">Stereo</option><option value="1">Mono</option></select></label>
+<label id="scene-label" hidden>Scene <select id="scene" aria-label="Scene"></select></label>
+<div class="extra-tools" id="extra-tools">
+<select id="export-format" aria-label="Download format"><option value="pcm16">WAV 16-bit</option><option value="pcm24">WAV 24-bit</option><option value="float32">WAV 32-bit float</option><option value="svg">Waveform (SVG)</option><option value="png">Waveform (PNG)</option><option value="source">Source (.py)</option></select><button id="download">Download</button>
+<button id="share">Share</button><input id="share-url" class="link-field" aria-label="Share URL" readonly placeholder="A link to this scene"><button id="shorten">Shorten link</button><button id="qr-open">QR code</button>
+<button id="hashbin-save">Save to HashBin</button><input class="cid" id="hashbin-cid" aria-label="HashBin CID or URL" placeholder="CID or saved link"><button id="hashbin-load">Load from HashBin</button>
+<a href="https://github.com/curtcox/AudioOnline#use-it" target="_blank" rel="noopener">Guide ↗</a>
+<span id="share-status" role="status"></span><span id="hashbin-status" role="status"></span>
+</div></div>
+<main class="workspace">
+<section id="editor-pane" aria-label="Code editor"><div class="pane-heading"><span class="filename">scene.py <span class="hint">/ Python</span></span><button id="hide-editor">Hide editor</button></div><div id="editor" aria-label="Scene source code"></div></section>
+<div id="splitter" role="separator" aria-label="Resize editor" aria-orientation="vertical" aria-valuenow="45" tabindex="0"></div>
+<section id="preview-pane" aria-label="Audio preview"><div class="pane-heading"><span>Preview</span><div class="preview-actions"><button id="show-editor" hidden>Show editor</button><span id="time" class="time"></span><button id="play" class="primary" disabled>Play</button></div></div>
+<div id="preview"><canvas id="waveform" tabindex="0" aria-label="Waveform. Click to seek; Space plays or pauses."></canvas><div id="lanes" aria-label="Track lanes"></div><p class="empty" id="empty">Loading the audio engine…</p></div>
+<p id="note" hidden></p><pre id="error" role="alert" hidden></pre><details id="output-panel" hidden><summary>Output</summary><pre id="output"></pre></details></section>
+</main>
+<footer class="statusbar"><span id="status" role="status">Loading the audio engine…</span><button id="cancel" hidden>Cancel</button><span class="spacer"></span><span id="engine-version">Python 3.14 (Pyodide) · deterministic renderer</span><span id="offline-status" role="status">Preparing offline…</span><button id="offline-action" hidden>Retry offline setup</button></footer>
+<dialog id="qr-dialog" aria-labelledby="qr-title"><h2 id="qr-title">Take your scene with you</h2><div id="qr-code"></div><p id="qr-message"></p><p id="qr-url"></p><div class="dialog-actions"><button id="qr-svg">Download QR (SVG)</button><button id="qr-png">Download QR (PNG)</button><button data-close="qr-dialog">Close</button></div></dialog>
+<dialog id="hashbin-dialog" aria-labelledby="hashbin-title"><h2 id="hashbin-title">Save to HashBin</h2><p id="hashbin-message" role="status"></p><div class="dialog-actions"><button id="hashbin-close">Close</button><button id="hashbin-confirm" class="primary">Review on HashBin</button></div></dialog>
+<script src="ace/ace.js?v=1"></script><script src="ace/theme-chrome.js?v=1"></script><script src="ace/mode-python.js?v=1"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script><script src="src/lz-fallback.js?v=1"></script>
+<script src="src/audio-core.js?v=1"></script><script src="src/audio-files.js?v=1"></script><script src="src/audio-sandbox.js?v=1"></script><script src="src/audio-client.js?v=1"></script><script src="src/render-scheduler.js?v=1"></script><script src="src/wav.js?v=1"></script><script src="src/export.js?v=1"></script><script src="src/player.js?v=1"></script><script src="src/hashbin.js?v=1"></script><script src="src/hashbin-panel.js?v=1"></script><script src="src/share-links.js?v=1"></script><script src="src/qr.js?v=1"></script><script src="src/examples.js?v=1"></script><script src="src/app.js?v=1"></script><script src="src/offline.js?v=1"></script>
+<script type="module" src="src/domain-migration.js"></script>
+</body></html>
