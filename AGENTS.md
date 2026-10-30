@@ -45,6 +45,11 @@ never `file://`.
 - The worker keeps the last render's stems for `mix` (mute/solo) and `stems` requests; the editor
   never receives stems unless it asks. Scene-muted tracks stay out of every mix. The spectrogram and
   waveform are display-only and may use platform math.
+- Compressed export (`src/encode.js`) runs on the editor origin: WebCodecs is missing in Chromium's
+  sandbox worker. The WebM and M4A muxers are original; AudioData timestamps come from sample
+  indices. WebKit's AAC "description" is a whole ES descriptor; `decoderConfig()` extracts the
+  AudioSpecificConfig. Lossy files are engine-specific by nature; tests decode them and compare length
+  and level only.
 - Web Audio, WebCodecs and other engine-specific code run only on the editor origin, for playback and
   export of bytes that were already rendered. Playback starts from a user gesture (iOS).
 - Scene errors map to the user's real lines: user code is compiled as `scene.py` with nothing

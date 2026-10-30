@@ -165,6 +165,12 @@
         const svg = AudioWaveform.svg(result.channels);
         return AudioExport.download(format === 'png' ? await AudioExport.png(svg, 1) : svg, `${name}-waveform.${format}`, 'image/svg+xml');
       }
+      if (AudioEncode.FORMATS[format]) {
+        $('status').textContent = `Encoding ${AudioEncode.FORMATS[format].label}…`;
+        const blob = await AudioEncode.encode(format, result.channels, result.sampleRate);
+        $('status').textContent = 'Encoded.';
+        return AudioExport.download(blob, `${name}.${AudioEncode.FORMATS[format].extension}`);
+      }
       if (format === 'stems') {
         const { stems, sampleRate } = await client.stems(), used = new Set();
         const files = stems.map(stem => {
@@ -179,6 +185,11 @@
     } catch (error) { setError(error.message); }
   }
   $('download').onclick = download;
+  // Compressed formats appear only where this browser's WebCodecs can encode them (WAV always works).
+  AudioEncode.supported().then(names => {
+    const after = $('export-format').querySelector('option[value="float32"]');
+    for (const name of names.reverse()) after.after(Object.assign(document.createElement('option'), { value: name, textContent: AudioEncode.FORMATS[name].label }));
+  });
   $('share').onclick = async () => { refreshShare({ address: true }); $('share-url').select(); try { await navigator.clipboard.writeText($('share-url').value); $('share-status').textContent = 'Link copied.'; } catch (_) { $('share-status').textContent = 'Select and copy the link above.'; } };
   $('share-url').onclick = () => $('share-url').select();
   $('shorten').onclick = async () => {

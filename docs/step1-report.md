@@ -477,3 +477,27 @@ Curt approved every recommendation:
 - **D5:** v1 accepts WAV uploads only.
 - **D6:** serve Pyodide like PythonOnline, from a pinned CDN with a verified offline cache.
 - **D7:** use a placeholder app ID until Curt supplies the real one.
+
+---
+
+## 11. Corrections found while building Step 3 (2026-10-30)
+
+The Step 1 plan held, but four findings changed details. Each one has a test.
+
+1. **ZzFX also needs a source rewrite, not only a `Math` shim.** It uses the `**` operator in four
+   places. No prelude can intercept `**`, and engines evaluate it differently. That was the real cause
+   of the boom mismatch in §2.2. The loader rewrites exactly those four expressions to `Math.pow` and
+   refuses any file whose hash or `**` usage differs. The vendored file stays byte-identical.
+2. **Pico keeps state between utterances.** It is held in C globals that `pico_resetEngine` and even a
+   new engine leave behind, so one utterance changed the next. The WASM heap is now restored to its
+   just-loaded snapshot before every utterance, as Gnuplot Online does around each run.
+3. **jsfxr 1.4.1 emits NaN as its first sample** with the platform `Math` too. Non-finite samples
+   become silence.
+4. **WebKit's AAC encoder returns an ES descriptor as its "description".** Chromium returns the bare
+   AudioSpecificConfig. The M4A muxer handles both.
+
+Two small additions:
+
+- Notation documents get a transparent −1 dBFS master limiter, because sfxr's explosion preset
+  exceeds full scale.
+- Ducking keys on the other track after its effects and before its pan.

@@ -7,7 +7,8 @@
 Write a few lines of Python and hear them. Audio Online is "Manim for audio": a `Scene` places
 clips on tracks over time, and the browser renders the result to a WAV. Everything is static: no
 server, API key or build step. It is under construction: Python scenes and four compact notations
-the bundled offline voice, effects and stems work now; compressed export and the gallery come next.
+the bundled offline voice, effects, stems and compressed export work now; neural voices and the
+gallery come next.
 
 ```python
 from audio import *
@@ -65,7 +66,9 @@ class Hello(Scene):
   SVOX Pico voices (`pico:en-US`, `en-GB`, `de-DE`, `es-ES`, `fr-FR`, `it-IT`) work offline and render
   identical bytes in every browser. Neural voices that download on demand come later and are not part
   of "Available offline".
-- **Download** WAV (16-bit, 24-bit or 32-bit float), **stems** (a ZIP of one 24-bit WAV per track,
+- **Download** WAV (16-bit, 24-bit or 32-bit float), **Opus (.webm)** and **AAC (.m4a)** where the
+  browser's WebCodecs can encode them (Opus: Chromium, Firefox, Safari/WebKit; AAC: Chromium,
+  Safari/WebKit; WAV always works), **stems** (a ZIP of one 24-bit WAV per track,
   after track effects and before the master), the waveform as SVG or PNG, or the `.py` source.
 - Share the compressed URL, optionally shorten it through is.gd/AllOrigins, or make a QR code with
   SVG/PNG downloads. Source, files and settings travel together. Local work is restored from

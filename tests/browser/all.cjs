@@ -194,6 +194,32 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.click('#loop'); assert.equal(await p.locator('#loop').getAttribute('aria-pressed'), 'false');
     await c.close();
   });
+  await run('compressed export: each format this browser encodes decodes back to the same length and level', async () => {
+    const { context: c, page: p } = await context();
+    await p.goto(base); await rendered(p);
+    await p.waitForFunction(() => typeof AudioEncoder === 'undefined' || document.querySelectorAll('#export-format option').length > 7, null, { timeout: 5000 }).catch(() => {});
+    const formats = await p.$$eval('#export-format option', options => options.map(o => o.value).filter(v => v === 'opus' || v === 'aac'));
+    console.log(`${name}: compressed formats offered: ${formats.join(', ') || 'none (WAV only)'}`);
+    for (const format of formats) {
+      await p.selectOption('#export-format', format);
+      const pending = p.waitForEvent('download'); await p.click('#download'); const download = await pending;
+      assert.match(download.suggestedFilename(), named(format === 'opus' ? 'hello.webm' : 'hello.m4a'));
+      const bytes = fs.readFileSync(await download.path());
+      const decoded = await p.evaluate(async b64 => {
+        const data = Uint8Array.from(atob(b64), ch => ch.charCodeAt(0)).buffer, original = audioPlayer.result.channels[0];
+        try {
+          const audio = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(data), ch = audio.getChannelData(0);
+          const rms = a => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
+          return { duration: audio.duration, channels: audio.numberOfChannels, ratio: rms(ch) / rms(original) };
+        } catch (error) { return { error: String(error) }; }
+      }, bytes.toString('base64'));
+      assert.ok(!decoded.error, `${format}: ${decoded.error}`);
+      assert.equal(decoded.channels, 2);
+      assert.ok(Math.abs(decoded.duration - 2.5) < 0.1, `${format} duration ${decoded.duration}`);
+      assert.ok(Math.abs(20 * Math.log10(decoded.ratio)) < 1.5, `${format} level ${decoded.ratio}`);
+    }
+    await c.close();
+  });
   await run('sharing, settings, QR and shortener', async () => {
     const { context: c, page: p } = await context(); await p.goto(base); await rendered(p);
     await edit(p, 'from audio import *\nclass Shared(Scene):\n    def construct(self):\n        self.play(Sine(330).dur(0.3))\n');
