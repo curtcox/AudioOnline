@@ -1,0 +1,354 @@
+{
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+ "editorOrigin": {
+  "caps": {
+   "OfflineAudioContext": "function",
+   "AudioWorkletNode": "function",
+   "origin": "http://127.0.0.1:8123",
+   "isSecureContext": true
+  },
+  "cases": {
+   "sine": {
+    "hash": "9906e98ae71e66c99906e98ae71e66c9",
+    "repeatSame": true,
+    "peak": 1,
+    "rms": 0.70711,
+    "ms": 26
+   },
+   "sawtooth": {
+    "hash": "446223e665de28d7446223e665de28d7",
+    "repeatSame": true,
+    "peak": 0.98044,
+    "rms": 0.48808,
+    "ms": 11
+   },
+   "bufferCopy": {
+    "hash": "d7c79760531cb553d7c79760531cb553",
+    "repeatSame": true,
+    "peak": 0.99993,
+    "rms": 0.57655,
+    "ms": 6
+   },
+   "gainRamp": {
+    "hash": "84a3cdc54bdf967284a3cdc54bdf9672",
+    "repeatSame": true,
+    "peak": 0.99972,
+    "rms": 0.35804,
+    "ms": 3
+   },
+   "biquad": {
+    "hash": "8d922f98be4d3d878d922f98be4d3d87",
+    "repeatSame": true,
+    "peak": 0.7416,
+    "rms": 0.16707,
+    "ms": 3
+   },
+   "delayFeedback": {
+    "hash": "7d2b94991ada60227d2b94991ada6022",
+    "repeatSame": true,
+    "peak": 0.99969,
+    "rms": 0.19555,
+    "ms": 2
+   },
+   "convolver": {
+    "hash": "67197345a9f055e453ef5f7b6b2c63ac",
+    "repeatSame": true,
+    "peak": 29.86749,
+    "rms": 2.62257,
+    "ms": 11
+   },
+   "compressor": {
+    "hash": "b0f024170c3cc6e8b0f024170c3cc6e8",
+    "repeatSame": true,
+    "peak": 1.12139,
+    "rms": 0.76806,
+    "ms": 5
+   },
+   "resample16k": {
+    "hash": "7ab49ca0ea824ced7ab49ca0ea824ced",
+    "repeatSame": true,
+    "peak": 1.93647,
+    "rms": 0.48264,
+    "ms": 2
+   },
+   "playbackRate": {
+    "hash": "e69617ba38043941e69617ba38043941",
+    "repeatSame": true,
+    "peak": 0.99992,
+    "rms": 0.40754,
+    "ms": 2
+   },
+   "panner": {
+    "hash": "43897b1a61edb2bf3e632243e69af342",
+    "repeatSame": true,
+    "peak": 0.99997,
+    "rms": 0.5,
+    "ms": 4
+   }
+  },
+  "speed60s": {
+   "ms": 321,
+   "realtimeX": 187
+  },
+  "worklet_blob": {
+   "ok": true,
+   "peak": 0.5,
+   "rms": 0.35355
+  },
+  "worklet_data": {
+   "error": "Failed to load worklet module script: data:text/javascript,registerProcessor('half'%2C%20class%20extends%20AudioWorkletProcessor%20%7B%20process(i%2C%20o)%20%7B%20const%20a%20%3D%20i%5B0%5D%2C%20b%20%3D%20o%5B0%5D%3B%20for%20(let%20c%20%3D%200%3B%20c%20%3C%20b.length%3B%20c%2B%2B)%20if%20(a%5Bc%5D)%20for%20(let%20k%20%3D%200%3B%20k%20%3C%20b%5Bc%5D.length%3B%20k%2B%2B)%20b%5Bc%5D%5Bk%5D%20%3D%20a%5Bc%5D%5Bk%5D%20*%200.5%3B%20return%20true%3B%20%7D%20%7D)%3B (a dependency or cross-origin script failed to load)"
+  },
+  "encoders": {
+   "opus": true,
+   "aac": true,
+   "aac44": true,
+   "flac": false,
+   "mp3": false,
+   "vorbis": false,
+   "pcm": false,
+   "opusRun": {
+    "chunks": 51,
+    "bytes": 16691,
+    "hash": "d2f7523c8b336a25",
+    "repeatSame": true
+   },
+   "aacRun": {
+    "chunks": 50,
+    "bytes": 3641,
+    "hash": "423a553277e5a8d9",
+    "repeatSame": true
+   }
+  }
+ },
+ "editorOriginMs": 506,
+ "opaqueWindow": {
+  "caps": {
+   "OfflineAudioContext": "function",
+   "AudioWorkletNode": "function",
+   "origin": "null",
+   "isSecureContext": true
+  },
+  "cases": {
+   "sine": {
+    "hash": "9906e98ae71e66c99906e98ae71e66c9",
+    "repeatSame": true,
+    "peak": 1,
+    "rms": 0.70711,
+    "ms": 4
+   },
+   "sawtooth": {
+    "hash": "446223e665de28d7446223e665de28d7",
+    "repeatSame": true,
+    "peak": 0.98044,
+    "rms": 0.48808,
+    "ms": 3
+   },
+   "bufferCopy": {
+    "hash": "d7c79760531cb553d7c79760531cb553",
+    "repeatSame": true,
+    "peak": 0.99993,
+    "rms": 0.57655,
+    "ms": 3
+   },
+   "gainRamp": {
+    "hash": "84a3cdc54bdf967284a3cdc54bdf9672",
+    "repeatSame": true,
+    "peak": 0.99972,
+    "rms": 0.35804,
+    "ms": 2
+   },
+   "biquad": {
+    "hash": "8d922f98be4d3d878d922f98be4d3d87",
+    "repeatSame": true,
+    "peak": 0.7416,
+    "rms": 0.16707,
+    "ms": 3
+   },
+   "delayFeedback": {
+    "hash": "7d2b94991ada60227d2b94991ada6022",
+    "repeatSame": true,
+    "peak": 0.99969,
+    "rms": 0.19555,
+    "ms": 2
+   },
+   "convolver": {
+    "hash": "67197345a9f055e453ef5f7b6b2c63ac",
+    "repeatSame": true,
+    "peak": 29.86749,
+    "rms": 2.62257,
+    "ms": 10
+   },
+   "compressor": {
+    "hash": "b0f024170c3cc6e8b0f024170c3cc6e8",
+    "repeatSame": true,
+    "peak": 1.12139,
+    "rms": 0.76806,
+    "ms": 4
+   },
+   "resample16k": {
+    "hash": "7ab49ca0ea824ced7ab49ca0ea824ced",
+    "repeatSame": true,
+    "peak": 1.93647,
+    "rms": 0.48264,
+    "ms": 2
+   },
+   "playbackRate": {
+    "hash": "e69617ba38043941e69617ba38043941",
+    "repeatSame": true,
+    "peak": 0.99992,
+    "rms": 0.40754,
+    "ms": 2
+   },
+   "panner": {
+    "hash": "43897b1a61edb2bf3e632243e69af342",
+    "repeatSame": true,
+    "peak": 0.99997,
+    "rms": 0.5,
+    "ms": 3
+   }
+  },
+  "speed60s": {
+   "ms": 322,
+   "realtimeX": 186.5
+  },
+  "worklet_blob": {
+   "ok": true,
+   "peak": 0.5,
+   "rms": 0.35355
+  },
+  "worklet_data": {
+   "error": "Failed to load worklet module script: data:text/javascript,registerProcessor('half'%2C%20class%20extends%20AudioWorkletProcessor%20%7B%20process(i%2C%20o)%20%7B%20const%20a%20%3D%20i%5B0%5D%2C%20b%20%3D%20o%5B0%5D%3B%20for%20(let%20c%20%3D%200%3B%20c%20%3C%20b.length%3B%20c%2B%2B)%20if%20(a%5Bc%5D)%20for%20(let%20k%20%3D%200%3B%20k%20%3C%20b%5Bc%5D.length%3B%20k%2B%2B)%20b%5Bc%5D%5Bk%5D%20%3D%20a%5Bc%5D%5Bk%5D%20*%200.5%3B%20return%20true%3B%20%7D%20%7D)%3B (a dependency or cross-origin script failed to load)"
+  },
+  "encoders": {
+   "opus": true,
+   "aac": true,
+   "aac44": true,
+   "flac": false,
+   "mp3": false,
+   "vorbis": false,
+   "pcm": false,
+   "opusRun": {
+    "chunks": 51,
+    "bytes": 16691,
+    "hash": "d2f7523c8b336a25",
+    "repeatSame": true
+   },
+   "aacRun": {
+    "chunks": 50,
+    "bytes": 3641,
+    "hash": "423a553277e5a8d9",
+    "repeatSame": true
+   }
+  }
+ },
+ "opaqueWindowMs": 447,
+ "sdkWorker": {
+  "context": "sdk-opaque-worker",
+  "caps": {
+   "OfflineAudioContext": "undefined",
+   "AudioContext": "undefined",
+   "webkitOfflineAudioContext": "undefined",
+   "AudioWorkletNode": "undefined",
+   "AudioBuffer": "undefined",
+   "AudioEncoder": "undefined",
+   "AudioDecoder": "undefined",
+   "AudioData": "function",
+   "OffscreenCanvas": "function",
+   "WebAssembly": "object",
+   "SharedArrayBuffer": "undefined",
+   "CompressionStream": "function",
+   "crossOriginIsolated": false,
+   "isSecureContext": false,
+   "origin": "null",
+   "subtle": "undefined",
+   "indexedDB": "blocked: SecurityError",
+   "caches": "blocked: ReferenceError",
+   "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36"
+  },
+  "ms": {
+   "caps": 3,
+   "encoders": 0,
+   "math": 14,
+   "pureDsp": 16,
+   "libmDsp": 4,
+   "abcjs": 34,
+   "zzfx": 18,
+   "jsfxr": 8,
+   "pico": 188,
+   "pyodide": 1685
+  },
+  "encoders": "AudioEncoder missing",
+  "math": {
+   "sin": "9bac783385eefbc8",
+   "cos": "0aedf7d2aa3348c3",
+   "tan": "2d723f37f150e4c2",
+   "exp": "accd6b7d4fce92f0",
+   "log": "b0599c893240f468",
+   "pow": "f8afb6c696384555",
+   "tanh": "348dcb0882d0fd01",
+   "atan2": "1c3ebc6197d0dec6",
+   "sqrt": "ed7631fa36b94ecb",
+   "cbrt": "b2842604f13075b3",
+   "sinh": "3eea7fec3a7c0e0d",
+   "expm1": "c404682d769bf632",
+   "log1p": "460550d782dcd408",
+   "log10": "b679974c43ca0761",
+   "hypot": "471d24ca3f3653e7",
+   "fround": "132234b806d77a53"
+  },
+  "pureDsp": {
+   "hash": "d85dfca3ee965d8c",
+   "peak": 0.482967,
+   "rms": 0.228139
+  },
+  "libmDsp": {
+   "hash": "0097a8bb9c324636"
+  },
+  "abcjs": {
+   "lines": 1,
+   "warnings": 0,
+   "synthSequence": "object",
+   "tracks": 1,
+   "events": 26,
+   "eventsHash": "4e244ced093b8938"
+  },
+  "zzfx": {
+   "coin": {
+    "n": 13239,
+    "hash": "d8cbc96c8c7f9b69"
+   },
+   "boom": {
+    "n": 46746,
+    "hash": "cd6cb8a5adab6884"
+   },
+   "laser": {
+    "n": 41454,
+    "hash": "1eb661b67afc9469"
+   }
+  },
+  "jsfxr": {
+   "n": 4691,
+   "hash": "8241fbdfc31c157c",
+   "sampleRate": 44100
+  },
+  "pico": {
+   "samples": 92352,
+   "seconds": 5.772,
+   "peak": 32768,
+   "hash": "8edd645e03509a11",
+   "synthMs": 163
+  },
+  "pyodide": {
+   "bootMs": 1166,
+   "numpyMs": 197,
+   "runMs": 320,
+   "synthHash": "1ee37b671ca97c18",
+   "fftHash": "056635d0a6497047",
+   "libmHash": "2583d99534ebe9fc"
+  }
+ },
+ "sdkWorkerMs": 1984,
+ "consoleErrors": [],
+ "browserVersion": "156.0.8078.4",
+ "wallMs": 3467
+}

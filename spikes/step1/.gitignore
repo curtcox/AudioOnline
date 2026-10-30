@@ -1,0 +1,5 @@
+assets/
+.pkgs/
+tmp/
+index.html
+bootstrap.js

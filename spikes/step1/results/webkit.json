@@ -1,0 +1,373 @@
+{
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "editorOrigin": {
+  "caps": {
+   "OfflineAudioContext": "function",
+   "AudioWorkletNode": "function",
+   "origin": "http://127.0.0.1:8123",
+   "isSecureContext": true
+  },
+  "cases": {
+   "sine": {
+    "hash": "6fa3d6b83ecd196d6fa3d6b83ecd196d",
+    "repeatSame": true,
+    "peak": 1,
+    "rms": 0.70711,
+    "ms": 16
+   },
+   "sawtooth": {
+    "hash": "4f344b9719230b244f344b9719230b24",
+    "repeatSame": true,
+    "peak": 0.98044,
+    "rms": 0.48808,
+    "ms": 3
+   },
+   "bufferCopy": {
+    "hash": "d7c79760531cb553d7c79760531cb553",
+    "repeatSame": true,
+    "peak": 0.99993,
+    "rms": 0.57655,
+    "ms": 2
+   },
+   "gainRamp": {
+    "hash": "a08f47088bd6ea15a08f47088bd6ea15",
+    "repeatSame": true,
+    "peak": 0.99972,
+    "rms": 0.35804,
+    "ms": 2
+   },
+   "biquad": {
+    "hash": "fe26a09a59c50c1bfe26a09a59c50c1b",
+    "repeatSame": true,
+    "peak": 0.7416,
+    "rms": 0.16707,
+    "ms": 2
+   },
+   "delayFeedback": {
+    "hash": "322741b2e5b3e907322741b2e5b3e907",
+    "repeatSame": true,
+    "peak": 0.99969,
+    "rms": 0.19554,
+    "ms": 3
+   },
+   "convolver": {
+    "hash": "42a2019294f385fb12d0fa6734888bda",
+    "repeatSame": true,
+    "peak": 29.86749,
+    "rms": 2.62257,
+    "ms": 14
+   },
+   "compressor": {
+    "hash": "c94728171c6d6f86c94728171c6d6f86",
+    "repeatSame": true,
+    "peak": 1.12139,
+    "rms": 0.76806,
+    "ms": 4
+   },
+   "resample16k": {
+    "hash": "47ad23299dc70ed247ad23299dc70ed2",
+    "repeatSame": true,
+    "peak": 1.93647,
+    "rms": 0.48264,
+    "ms": 2
+   },
+   "playbackRate": {
+    "hash": "47f91a525a5cb2eb47f91a525a5cb2eb",
+    "repeatSame": true,
+    "peak": 0.99992,
+    "rms": 0.40754,
+    "ms": 1
+   },
+   "panner": {
+    "hash": "93c219d855943f67ce863f6892c669ed",
+    "repeatSame": true,
+    "peak": 0.99997,
+    "rms": 0.5,
+    "ms": 2
+   }
+  },
+  "speed60s": {
+   "ms": 404,
+   "realtimeX": 148.5
+  },
+  "worklet_blob": {
+   "ok": true,
+   "peak": 0.5,
+   "rms": 0.35355
+  },
+  "worklet_data": {
+   "error": "Not allowed by CSP"
+  },
+  "encoders": {
+   "opus": true,
+   "aac": true,
+   "aac44": true,
+   "flac": false,
+   "mp3": false,
+   "vorbis": false,
+   "pcm": true,
+   "opusRun": {
+    "chunks": 51,
+    "bytes": 10057,
+    "hash": "2e08eb9f3e68b4a4",
+    "repeatSame": true
+   },
+   "aacRun": {
+    "chunks": 49,
+    "bytes": 3135,
+    "hash": "1cb37229052c79b0",
+    "repeatSame": true
+   }
+  }
+ },
+ "editorOriginMs": 627,
+ "opaqueWindow": {
+  "caps": {
+   "OfflineAudioContext": "function",
+   "AudioWorkletNode": "function",
+   "origin": "null",
+   "isSecureContext": true
+  },
+  "cases": {
+   "sine": {
+    "hash": "6fa3d6b83ecd196d6fa3d6b83ecd196d",
+    "repeatSame": true,
+    "peak": 1,
+    "rms": 0.70711,
+    "ms": 9
+   },
+   "sawtooth": {
+    "hash": "4f344b9719230b244f344b9719230b24",
+    "repeatSame": true,
+    "peak": 0.98044,
+    "rms": 0.48808,
+    "ms": 2
+   },
+   "bufferCopy": {
+    "hash": "d7c79760531cb553d7c79760531cb553",
+    "repeatSame": true,
+    "peak": 0.99993,
+    "rms": 0.57655,
+    "ms": 3
+   },
+   "gainRamp": {
+    "hash": "a08f47088bd6ea15a08f47088bd6ea15",
+    "repeatSame": true,
+    "peak": 0.99972,
+    "rms": 0.35804,
+    "ms": 2
+   },
+   "biquad": {
+    "hash": "fe26a09a59c50c1bfe26a09a59c50c1b",
+    "repeatSame": true,
+    "peak": 0.7416,
+    "rms": 0.16707,
+    "ms": 2
+   },
+   "delayFeedback": {
+    "hash": "322741b2e5b3e907322741b2e5b3e907",
+    "repeatSame": true,
+    "peak": 0.99969,
+    "rms": 0.19554,
+    "ms": 2
+   },
+   "convolver": {
+    "hash": "42a2019294f385fb12d0fa6734888bda",
+    "repeatSame": true,
+    "peak": 29.86749,
+    "rms": 2.62257,
+    "ms": 6
+   },
+   "compressor": {
+    "hash": "c94728171c6d6f86c94728171c6d6f86",
+    "repeatSame": true,
+    "peak": 1.12139,
+    "rms": 0.76806,
+    "ms": 4
+   },
+   "resample16k": {
+    "hash": "47ad23299dc70ed247ad23299dc70ed2",
+    "repeatSame": true,
+    "peak": 1.93647,
+    "rms": 0.48264,
+    "ms": 2
+   },
+   "playbackRate": {
+    "hash": "47f91a525a5cb2eb47f91a525a5cb2eb",
+    "repeatSame": true,
+    "peak": 0.99992,
+    "rms": 0.40754,
+    "ms": 1
+   },
+   "panner": {
+    "hash": "93c219d855943f67ce863f6892c669ed",
+    "repeatSame": true,
+    "peak": 0.99997,
+    "rms": 0.5,
+    "ms": 2
+   }
+  },
+  "speed60s": {
+   "ms": 368,
+   "realtimeX": 163
+  },
+  "worklet_blob": {
+   "error": "Cross-origin script load denied by Cross-Origin Resource Sharing policy."
+  },
+  "worklet_data": {
+   "error": "Not allowed by CSP"
+  },
+  "encoders": {
+   "opus": true,
+   "aac": true,
+   "aac44": true,
+   "flac": false,
+   "mp3": false,
+   "vorbis": false,
+   "pcm": true,
+   "opusRun": {
+    "chunks": 51,
+    "bytes": 10057,
+    "hash": "2e08eb9f3e68b4a4",
+    "repeatSame": true
+   },
+   "aacRun": {
+    "chunks": 49,
+    "bytes": 3135,
+    "hash": "1cb37229052c79b0",
+    "repeatSame": true
+   }
+  }
+ },
+ "opaqueWindowMs": 491,
+ "sdkWorker": {
+  "context": "sdk-opaque-worker",
+  "caps": {
+   "OfflineAudioContext": "undefined",
+   "AudioContext": "undefined",
+   "webkitOfflineAudioContext": "undefined",
+   "AudioWorkletNode": "undefined",
+   "AudioBuffer": "undefined",
+   "AudioEncoder": "function",
+   "AudioDecoder": "function",
+   "AudioData": "function",
+   "OffscreenCanvas": "function",
+   "WebAssembly": "object",
+   "SharedArrayBuffer": "undefined",
+   "CompressionStream": "function",
+   "crossOriginIsolated": false,
+   "isSecureContext": true,
+   "origin": "null",
+   "subtle": "function",
+   "indexedDB": "blocked: SecurityError",
+   "caches": "usable",
+   "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15"
+  },
+  "ms": {
+   "caps": 3,
+   "encoders": 36,
+   "math": 17,
+   "pureDsp": 36,
+   "libmDsp": 7,
+   "abcjs": 29,
+   "zzfx": 24,
+   "jsfxr": 9,
+   "pico": 200,
+   "pyodide": 1678
+  },
+  "encoders": {
+   "opus": true,
+   "aac": true,
+   "flac": false,
+   "mp3": false,
+   "vorbis": false,
+   "pcm": true,
+   "opusRun": {
+    "bytes": 10057,
+    "hash": "2e08eb9f3e68b4a4",
+    "repeatSame": true
+   },
+   "aacRun": {
+    "bytes": 3135,
+    "hash": "1cb37229052c79b0",
+    "repeatSame": true
+   }
+  },
+  "math": {
+   "sin": "84f220a3fe7d5d50",
+   "cos": "6beedecaea8bff7b",
+   "tan": "e7ff747f9702a1e2",
+   "exp": "181e90a3c5fa5500",
+   "log": "bc6c4cb5c20b7ea8",
+   "pow": "f8afb6c696384555",
+   "tanh": "348dcb0882d0fd01",
+   "atan2": "92f4ad61ec0593de",
+   "sqrt": "ed7631fa36b94ecb",
+   "cbrt": "0dd0c200a95943cb",
+   "sinh": "d60d2f586966f075",
+   "expm1": "d3cce741b9c1f36e",
+   "log1p": "05a0d19b731bd350",
+   "log10": "0fd41480748c4131",
+   "hypot": "fdeaac5210d93807",
+   "fround": "132234b806d77a53"
+  },
+  "pureDsp": {
+   "hash": "d85dfca3ee965d8c",
+   "peak": 0.482967,
+   "rms": 0.228139
+  },
+  "libmDsp": {
+   "hash": "0097a8bb9c324636"
+  },
+  "abcjs": {
+   "lines": 1,
+   "warnings": 0,
+   "synthSequence": "object",
+   "tracks": 1,
+   "events": 26,
+   "eventsHash": "4e244ced093b8938"
+  },
+  "zzfx": {
+   "coin": {
+    "n": 13239,
+    "hash": "d8cbc96c8c7f9b69"
+   },
+   "boom": {
+    "n": 46746,
+    "hash": "618bbf818910c26c"
+   },
+   "laser": {
+    "n": 41454,
+    "hash": "1eb661b67afc9469"
+   }
+  },
+  "jsfxr": {
+   "n": 4691,
+   "hash": "8241fbdfc31c157c",
+   "sampleRate": 44100
+  },
+  "pico": {
+   "samples": 92352,
+   "seconds": 5.772,
+   "peak": 32768,
+   "hash": "8edd645e03509a11",
+   "synthMs": 165
+  },
+  "pyodide": {
+   "bootMs": 1157,
+   "numpyMs": 193,
+   "runMs": 319,
+   "synthHash": "1ee37b671ca97c18",
+   "fftHash": "056635d0a6497047",
+   "libmHash": "2583d99534ebe9fc"
+  }
+ },
+ "sdkWorkerMs": 2054,
+ "consoleErrors": [
+  "Refused to load data:text/javascript,registerProcessor('half'%2C%20class%20extends%20AudioWorkletProcessor%20%7B%20process(i%2C%20o)%20%7B%20const%20a%20%3D%20i%5B0%5D%2C%20b%20%3D%20o%5B0%5D%3B%20for%20(let%20c%20%3D%200%3B%20c%20%3C%20b.length%3B%20c%2B%2B)%20if%20(a%5Bc%5D)%20for%20(let%20k%20%3D%200%3B%20k%20%3C%20b%5Bc%5D.length%3B%20k%2B%2B)%20b%5Bc%5D%5Bk%5D%20%3D%20a%5Bc%5D%5Bk%5D%20*%200.5%3B%20return%20true%3B%20%7D%20%7D)%3B because it does not appear in the script-src directive of the Content Security Policy.",
+  "Refused to load data:text/javascript,registerProcessor('half'%2C%20class%20extends%20AudioWorkletProcessor%20%7B%20process(i%2C%20o)%20%7B%20const%20a%20%3D%20i%5B0%5D%2C%20b%20%3D%20o%5B0%5D%3B%20for%20(let%20c%20%3D%200%3B%20c%20%3C%20b.length%3B%20c%2B%2B)%20if%20(a%5Bc%5D)%20for%20(let%20k%20%3D%200%3B%20k%20%3C%20b%5Bc%5D.length%3B%20k%2B%2B)%20b%5Bc%5D%5Bk%5D%20%3D%20a%5Bc%5D%5Bk%5D%20*%200.5%3B%20return%20true%3B%20%7D%20%7D)%3B because it does not appear in the script-src directive of the Content Security Policy.",
+  "Refused to load data:text/javascript, because it does not appear in the script-src directive of the Content Security Policy."
+ ],
+ "browserVersion": "27.2",
+ "wallMs": 4015
+}

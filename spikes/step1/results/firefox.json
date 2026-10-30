@@ -1,0 +1,358 @@
+{
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0",
+ "editorOrigin": {
+  "caps": {
+   "OfflineAudioContext": "function",
+   "AudioWorkletNode": "function",
+   "origin": "http://127.0.0.1:8123",
+   "isSecureContext": true
+  },
+  "cases": {
+   "sine": {
+    "hash": "57a76a850bf3406257a76a850bf34062",
+    "repeatSame": true,
+    "peak": 1,
+    "rms": 0.70711,
+    "ms": 8
+   },
+   "sawtooth": {
+    "hash": "b6402360aa4d1c9db6402360aa4d1c9d",
+    "repeatSame": true,
+    "peak": 0.98812,
+    "rms": 0.49185,
+    "ms": 6
+   },
+   "bufferCopy": {
+    "hash": "d7c79760531cb553d7c79760531cb553",
+    "repeatSame": true,
+    "peak": 0.99993,
+    "rms": 0.57655,
+    "ms": 4
+   },
+   "gainRamp": {
+    "hash": "058b911c22f3b109058b911c22f3b109",
+    "repeatSame": true,
+    "peak": 0.99972,
+    "rms": 0.35804,
+    "ms": 4
+   },
+   "biquad": {
+    "hash": "62b12fb348dbf47262b12fb348dbf472",
+    "repeatSame": true,
+    "peak": 0.7416,
+    "rms": 0.16707,
+    "ms": 4
+   },
+   "delayFeedback": {
+    "hash": "2b7a34997f8680222b7a34997f868022",
+    "repeatSame": true,
+    "peak": 0.99969,
+    "rms": 0.19555,
+    "ms": 4
+   },
+   "convolver": {
+    "hash": "4bdd8122daaf49d74ea843bf96de2648",
+    "repeatSame": true,
+    "peak": 29.86749,
+    "rms": 2.62257,
+    "ms": 13
+   },
+   "compressor": {
+    "hash": "2b4e392bab1fbba22b4e392bab1fbba2",
+    "repeatSame": true,
+    "peak": 1.11968,
+    "rms": 0.76703,
+    "ms": 9
+   },
+   "resample16k": {
+    "hash": "b9672e0f1b7fa80cb9672e0f1b7fa80c",
+    "repeatSame": true,
+    "peak": 1.31121,
+    "rms": 0.49937,
+    "ms": 4
+   },
+   "playbackRate": {
+    "hash": "915e8b94b4b4320d915e8b94b4b4320d",
+    "repeatSame": true,
+    "peak": 1.23985,
+    "rms": 0.33174,
+    "ms": 5
+   },
+   "panner": {
+    "hash": "4cf1b3ac19cb70bb9af76e911fe6443a",
+    "repeatSame": true,
+    "peak": 0.99997,
+    "rms": 0.5,
+    "ms": 4
+   }
+  },
+  "speed60s": {
+   "ms": 313,
+   "realtimeX": 191.7
+  },
+  "worklet_blob": {
+   "ok": true,
+   "peak": 0.5,
+   "rms": 0.35355
+  },
+  "worklet_data": {
+   "error": "The operation was aborted. "
+  },
+  "encoders": {
+   "opus": true,
+   "aac": false,
+   "aac44": false,
+   "flac": false,
+   "mp3": false,
+   "vorbis": true,
+   "pcm": false,
+   "opusRun": {
+    "chunks": 51,
+    "bytes": 20630,
+    "hash": "7f9f264e7318034b",
+    "repeatSame": true
+   }
+  }
+ },
+ "editorOriginMs": 457,
+ "opaqueWindow": {
+  "caps": {
+   "OfflineAudioContext": "function",
+   "AudioWorkletNode": "function",
+   "origin": "null",
+   "isSecureContext": true
+  },
+  "cases": {
+   "sine": {
+    "hash": "57a76a850bf3406257a76a850bf34062",
+    "repeatSame": true,
+    "peak": 1,
+    "rms": 0.70711,
+    "ms": 4
+   },
+   "sawtooth": {
+    "hash": "b6402360aa4d1c9db6402360aa4d1c9d",
+    "repeatSame": true,
+    "peak": 0.98812,
+    "rms": 0.49185,
+    "ms": 5
+   },
+   "bufferCopy": {
+    "hash": "d7c79760531cb553d7c79760531cb553",
+    "repeatSame": true,
+    "peak": 0.99993,
+    "rms": 0.57655,
+    "ms": 3
+   },
+   "gainRamp": {
+    "hash": "058b911c22f3b109058b911c22f3b109",
+    "repeatSame": true,
+    "peak": 0.99972,
+    "rms": 0.35804,
+    "ms": 4
+   },
+   "biquad": {
+    "hash": "62b12fb348dbf47262b12fb348dbf472",
+    "repeatSame": true,
+    "peak": 0.7416,
+    "rms": 0.16707,
+    "ms": 4
+   },
+   "delayFeedback": {
+    "hash": "2b7a34997f8680222b7a34997f868022",
+    "repeatSame": true,
+    "peak": 0.99969,
+    "rms": 0.19555,
+    "ms": 4
+   },
+   "convolver": {
+    "hash": "4bdd8122daaf49d74ea843bf96de2648",
+    "repeatSame": true,
+    "peak": 29.86749,
+    "rms": 2.62257,
+    "ms": 12
+   },
+   "compressor": {
+    "hash": "2b4e392bab1fbba22b4e392bab1fbba2",
+    "repeatSame": true,
+    "peak": 1.11968,
+    "rms": 0.76703,
+    "ms": 7
+   },
+   "resample16k": {
+    "hash": "b9672e0f1b7fa80cb9672e0f1b7fa80c",
+    "repeatSame": true,
+    "peak": 1.31121,
+    "rms": 0.49937,
+    "ms": 3
+   },
+   "playbackRate": {
+    "hash": "915e8b94b4b4320d915e8b94b4b4320d",
+    "repeatSame": true,
+    "peak": 1.23985,
+    "rms": 0.33174,
+    "ms": 4
+   },
+   "panner": {
+    "hash": "4cf1b3ac19cb70bb9af76e911fe6443a",
+    "repeatSame": true,
+    "peak": 0.99997,
+    "rms": 0.5,
+    "ms": 4
+   }
+  },
+  "speed60s": {
+   "ms": 293,
+   "realtimeX": 204.8
+  },
+  "worklet_blob": {
+   "ok": true,
+   "peak": 0.5,
+   "rms": 0.35355
+  },
+  "worklet_data": {
+   "error": "The operation was aborted. "
+  },
+  "encoders": {
+   "opus": true,
+   "aac": false,
+   "aac44": false,
+   "flac": false,
+   "mp3": false,
+   "vorbis": true,
+   "pcm": false,
+   "opusRun": {
+    "chunks": 51,
+    "bytes": 20630,
+    "hash": "7f9f264e7318034b",
+    "repeatSame": true
+   }
+  }
+ },
+ "opaqueWindowMs": 437,
+ "sdkWorker": {
+  "context": "sdk-opaque-worker",
+  "caps": {
+   "OfflineAudioContext": "undefined",
+   "AudioContext": "undefined",
+   "webkitOfflineAudioContext": "undefined",
+   "AudioWorkletNode": "undefined",
+   "AudioBuffer": "undefined",
+   "AudioEncoder": "function",
+   "AudioDecoder": "function",
+   "AudioData": "function",
+   "OffscreenCanvas": "function",
+   "WebAssembly": "object",
+   "SharedArrayBuffer": "undefined",
+   "CompressionStream": "function",
+   "crossOriginIsolated": false,
+   "isSecureContext": true,
+   "origin": "null",
+   "subtle": "function",
+   "indexedDB": "blocked: SecurityError",
+   "caches": "blocked: NS_ERROR_FAILURE",
+   "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+  },
+  "ms": {
+   "caps": 9,
+   "encoders": 16,
+   "math": 23,
+   "pureDsp": 25,
+   "libmDsp": 8,
+   "abcjs": 23,
+   "zzfx": 17,
+   "jsfxr": 6,
+   "pico": 245,
+   "pyodide": 1832
+  },
+  "encoders": {
+   "opus": true,
+   "aac": false,
+   "flac": false,
+   "mp3": false,
+   "vorbis": true,
+   "pcm": false,
+   "opusRun": {
+    "bytes": 20630,
+    "hash": "7f9f264e7318034b",
+    "repeatSame": true
+   }
+  },
+  "math": {
+   "sin": "93614ad36bcfff08",
+   "cos": "662e43fac3116c0b",
+   "tan": "3ff0b043d034b29a",
+   "exp": "858ee5e3d8abab86",
+   "log": "2c80c7b92159ef50",
+   "pow": "f8afb6c696384555",
+   "tanh": "746e5f18a5773779",
+   "atan2": "f966be796549858e",
+   "sqrt": "ed7631fa36b94ecb",
+   "cbrt": "1611df10a4039c63",
+   "sinh": "f9e6fac8f0239b15",
+   "expm1": "c6da4067db641b9e",
+   "log1p": "62fdc6db14e7aa88",
+   "log10": "601435f03b732489",
+   "hypot": "4462b9b61223df6f",
+   "fround": "132234b806d77a53"
+  },
+  "pureDsp": {
+   "hash": "d85dfca3ee965d8c",
+   "peak": 0.482967,
+   "rms": 0.228139
+  },
+  "libmDsp": {
+   "hash": "0097a8bb9c324636"
+  },
+  "abcjs": {
+   "lines": 1,
+   "warnings": 0,
+   "synthSequence": "object",
+   "tracks": 1,
+   "events": 26,
+   "eventsHash": "4e244ced093b8938"
+  },
+  "zzfx": {
+   "coin": {
+    "n": 13239,
+    "hash": "d8cbc96c8c7f9b69"
+   },
+   "boom": {
+    "n": 46746,
+    "hash": "618bbf818910c26c"
+   },
+   "laser": {
+    "n": 41454,
+    "hash": "1eb661b67afc9469"
+   }
+  },
+  "jsfxr": {
+   "n": 4691,
+   "hash": "8241fbdfc31c157c",
+   "sampleRate": 44100
+  },
+  "pico": {
+   "samples": 92352,
+   "seconds": 5.772,
+   "peak": 32768,
+   "hash": "8edd645e03509a11",
+   "synthMs": 213
+  },
+  "pyodide": {
+   "bootMs": 1240,
+   "numpyMs": 237,
+   "runMs": 350,
+   "synthHash": "1ee37b671ca97c18",
+   "fftHash": "056635d0a6497047",
+   "libmHash": "2583d99534ebe9fc"
+  }
+ },
+ "sdkWorkerMs": 2217,
+ "consoleErrors": [
+  "Content-Security-Policy: The page’s settings blocked a script (script-src-elem) at data:text/javascript,registerProcessor('… from being executed because it violates the following directive: “script-src 'self' 'sha256-IMEqdP+AkCKdxhM3X7mQM4pV/chykJXPvdtndD+XeH8=' 'sha256-2He1SoJBpsmIotee/LbBdnJDslYONaWYW6aEVQcEKJg=' blob: 'wasm-unsafe-eval'”",
+  "Content-Security-Policy: The page’s settings blocked a script (script-src-elem) at data:text/javascript,registerProcessor('… from being executed because it violates the following directive: “script-src 'self' 'sha256-IMEqdP+AkCKdxhM3X7mQM4pV/chykJXPvdtndD+XeH8=' 'sha256-2He1SoJBpsmIotee/LbBdnJDslYONaWYW6aEVQcEKJg=' blob: 'wasm-unsafe-eval'”",
+  "Content-Security-Policy: The page’s settings blocked a script (script-src-elem) at data:text/javascript, from being executed because it violates the following directive: “script-src 'self' 'sha256-IMEqdP+AkCKdxhM3X7mQM4pV/chykJXPvdtndD+XeH8=' 'sha256-2He1SoJBpsmIotee/LbBdnJDslYONaWYW6aEVQcEKJg=' blob: 'wasm-unsafe-eval'”"
+ ],
+ "browserVersion": "159.0",
+ "wallMs": 5109
+}
