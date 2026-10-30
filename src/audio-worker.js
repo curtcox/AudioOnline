@@ -57,11 +57,13 @@ async function run({ id, kind, src, settings }) {
     send({ type: 'started', id });
     const started = performance.now();
     let result;
-    try { result = AudioRenderer.render(notation.timeline(kind, src, options), [], engines); }
+    let timeline;
+    try { timeline = notation.timeline(kind, src, options); result = AudioRenderer.render(timeline, [], engines); }
     catch (error) {
       if (error instanceof AudioRenderer.TimelineError || error instanceof AudioNotation.NotationError) return send({ id, error: { message: error.message, line: error.line ?? null, traceback: '' }, scenes: [], output: '' });
       throw error;
     }
+    remember(result, timeline);
     const { channels, ...rest } = result;
     return send({ id, ...rest, channels, scenes: [], scene: '', output: '', ms: performance.now() - started }, channels.map(channel => channel.buffer));
   }
@@ -93,9 +95,28 @@ async function run({ id, kind, src, settings }) {
     if (error instanceof AudioRenderer.TimelineError) return send({ id, error: { message: error.message, line: error.line ?? null, traceback: '' }, scenes: scene.scenes, output: output.join('\n') });
     throw error;
   }
+  remember(result, scene.timeline);
   const { channels, ...rest } = result;
   send({ id, ...rest, channels, scenes: scene.scenes, scene: scene.scene, output: output.join('\n'), ms: performance.now() - started }, channels.map(channel => channel.buffer));
 }
+// The last render's stems stay here for mute/solo re-mixes and stem export; the editor asks for them.
+let last = null;
+function remember(result, timeline) {
+  const muted = new Set(Object.entries(timeline.tracks || {}).filter(([, t]) => t?.mute).map(([name]) => name));
+  last = { stems: result.stems, master: timeline.master || {}, rate: result.sampleRate, channels: result.channels.length, length: result.length, muted };
+}
+function mix({ id, enabled }) {
+  if (!last) throw new Error('Render the scene first.');
+  const names = (Array.isArray(enabled) ? enabled : []).filter(name => last.stems.has(name) && !last.muted.has(name));
+  const channels = AudioRenderer.mix(last.stems, names, last.master, last.rate, last.channels, last.length);
+  send({ id, kind: 'mix', sampleRate: last.rate, length: last.length, channels }, channels.map(channel => channel.buffer));
+}
+function stems({ id }) {
+  if (!last) throw new Error('Render the scene first.');
+  const list = [...last.stems].map(([name, channels]) => ({ name, channels: channels.map(ch => Float32Array.from(ch)) }));
+  send({ id, kind: 'stems', sampleRate: last.rate, length: last.length, stems: list }, list.flatMap(stem => stem.channels.map(channel => channel.buffer)));
+}
 self.onmessage = ({ data }) => {
-  run(data).catch(error => send({ id: data.id, error: { message: String(error?.message || error), line: null, traceback: '' }, output: output.join('\n') }));
+  const task = data?.kind === 'mix' ? async () => mix(data) : data?.kind === 'stems' ? async () => stems(data) : () => run(data);
+  task().catch(error => send({ id: data.id, error: { message: String(error?.message || error), line: null, traceback: '' }, output: output.join('\n') }));
 };

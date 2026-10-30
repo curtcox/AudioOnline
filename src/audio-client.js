@@ -51,6 +51,30 @@ class AudioClient {
       worker.postMessage({ id, kind: AudioCore.TYPES.includes(kind) ? kind : 'python', src, settings: AudioCore.options(settings) });
     });
   }
+  /** Re-mixes the last render's stems (mute/solo) or returns them; the worker keeps them between calls. */
+  request(kind, payload = {}) {
+    if (!this.worker || this.pending) return Promise.reject(new Error('Render the scene first.'));
+    const worker = this.worker, id = ++this.sequence;
+    return new Promise((resolve, reject) => {
+      const timer = this.timers.setTimeout(() => { worker.onmessage = null; reject(new Error('The audio engine did not answer.')); }, this.timeout);
+      worker.onmessage = ({ data }) => {
+        if (!data || data.id !== id) return;
+        this.timers.clearTimeout(timer); worker.onmessage = null;
+        try { if (data.error) throw new Error(String(data.error.message).slice(0, 4000)); resolve(AudioClient.validateExtra(data, kind)); } catch (error) { reject(error); }
+      };
+      worker.postMessage({ id, kind, ...payload });
+    });
+  }
+  mix(enabled) { return this.request('mix', { enabled: enabled.slice(0, 200).map(String) }); }
+  stems() { return this.request('stems'); }
+  static validateExtra(data, kind) {
+    const { sampleRate, length } = data;
+    if (!AudioCore.SAMPLE_RATES.includes(sampleRate) || !Number.isInteger(length) || length < 0 || length > AudioCore.MAX_SECONDS * sampleRate) throw new Error('The sandbox returned invalid audio.');
+    const channels = list => Array.isArray(list) && list.length >= 1 && list.length <= 2 && list.every(c => c instanceof Float32Array && c.length === length);
+    if (kind === 'mix') { if (!channels(data.channels)) throw new Error('The sandbox returned an invalid mix.'); return { sampleRate, length, channels: data.channels }; }
+    if (!Array.isArray(data.stems) || data.stems.length > 200 || !data.stems.every(s => s && typeof s.name === 'string' && channels(s.channels))) throw new Error('The sandbox returned invalid stems.');
+    return { sampleRate, length, stems: data.stems.map(s => ({ name: s.name.slice(0, 64), channels: s.channels })) };
+  }
   /** Results cross from the sandbox: check types, bounds and lengths before the editor uses them. */
   static validate(data) {
     const text = (value, max) => typeof value === 'string' ? value.slice(0, max) : '';

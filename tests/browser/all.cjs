@@ -165,6 +165,35 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     }
     await c.close();
   });
+  await run('mute and solo re-mix in the sandbox; stems download as a ZIP; dragging sets a loop region', async () => {
+    const { context: c, page: p } = await context();
+    await p.goto(base + '?example=podcast-ducking'); await rendered(p);
+    const full = await pageHash(p), energy = () => p.evaluate(() => audioPlayer.result.channels[0].subarray(0, 96000).reduce((s, v) => s + v * v, 0));
+    assert.ok(await energy() > 1, 'music plays in the first two seconds');
+    await p.click('[aria-label="Mute music"]'); await p.waitForFunction(() => !document.getElementById('note').hidden && /Preview mix/.test(document.getElementById('note').textContent));
+    assert.equal(await energy(), 0, 'muted music leaves silence before the voice');
+    assert.equal(await p.locator('[aria-label="Mute music"]').getAttribute('aria-pressed'), 'true');
+    await p.click('[aria-label="Mute music"]'); await p.waitForFunction(() => document.getElementById('note').hidden);
+    assert.equal(await pageHash(p), full, 'unmuting restores the exact full mix');
+    await p.click('[aria-label="Solo voice"]'); await p.waitForFunction(() => !document.getElementById('note').hidden && /Preview mix/.test(document.getElementById('note').textContent));
+    assert.equal(await energy(), 0);
+    // A new render keeps the solo and re-applies it.
+    await p.evaluate(() => { document.getElementById('status').textContent = ''; }); await p.click('#render'); await rendered(p);
+    await p.waitForFunction(() => audioPlayer.result.channels[0].subarray(0, 96000).every(v => v === 0));
+    await p.click('[aria-label="Solo voice"]'); await p.waitForFunction(() => document.getElementById('note').hidden);
+    await p.selectOption('#export-format', 'stems');
+    const pending = p.waitForEvent('download'); await p.click('#download'); const download = await pending;
+    assert.match(download.suggestedFilename(), named('episode-stems.zip'));
+    const zip = fs.readFileSync(await download.path());
+    assert.equal(zip.readUInt32LE(0), 0x04034b50); assert.match(zip.toString('latin1'), /music\.wav[\s\S]*voice\.wav/);
+    const box = await p.locator('#waveform').boundingBox();
+    await p.mouse.move(box.x + box.width * 0.25, box.y + 20); await p.mouse.down(); await p.mouse.move(box.x + box.width * 0.5, box.y + 20, { steps: 5 }); await p.mouse.up();
+    const loop = await p.evaluate(() => ({ region: audioPlayer.region, looping: audioPlayer.looping, position: audioPlayer.position }));
+    assert.ok(Math.abs(loop.region.start - 13.04 * 0.25) < 0.1 && Math.abs(loop.region.end - 13.04 * 0.5) < 0.1 && loop.looping, JSON.stringify(loop));
+    assert.equal(await p.locator('#loop').getAttribute('aria-pressed'), 'true');
+    await p.click('#loop'); assert.equal(await p.locator('#loop').getAttribute('aria-pressed'), 'false');
+    await c.close();
+  });
   await run('sharing, settings, QR and shortener', async () => {
     const { context: c, page: p } = await context(); await p.goto(base); await rendered(p);
     await edit(p, 'from audio import *\nclass Shared(Scene):\n    def construct(self):\n        self.play(Sine(330).dur(0.3))\n');

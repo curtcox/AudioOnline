@@ -7,7 +7,7 @@
 Write a few lines of Python and hear them. Audio Online is "Manim for audio": a `Scene` places
 clips on tracks over time, and the browser renders the result to a WAV. Everything is static: no
 server, API key or build step. It is under construction: Python scenes and four compact notations
-the bundled offline voice and effects work now; stems, compressed export and the gallery come next.
+the bundled offline voice, effects and stems work now; compressed export and the gallery come next.
 
 ```python
 from audio import *
@@ -27,8 +27,10 @@ class Hello(Scene):
 - Edit the scene; it renders after a short pause, or press **Render**. Errors mark the scene line and
   keep the last good render playable. Long renders can be cancelled and stop after 20 seconds
   (downloading Python the first time does not count).
-- **Preview** shows the waveform and one lane per track. Click the waveform to seek, press **Play**
-  (or Space), and click a clip to jump to it and to its line in the code. `print` output appears in
+- **Preview** shows the waveform, a spectrogram and one lane per track. Click to seek, drag to choose a
+  loop region (**Loop** toggles it), press **Play** (or Space), and click a clip to jump to it and to
+  its line in the code. **M** and **S** mute or solo a track in the preview; the sandbox re-mixes the
+  stems through the master effects. Downloads always use the full mix. `print` output appears in
   **Output**. A file with several Scenes shows a **Scene** selector.
 - **Sources:** `Sine`, `Square`, `Saw`, `Triangle`, `Noise(color=, seed=)`, `Silence`, and
   `Samples(array, rate)` for numpy arrays or lists. **Clip operations** return new clips: `.dur()`,
@@ -63,7 +65,8 @@ class Hello(Scene):
   SVOX Pico voices (`pico:en-US`, `en-GB`, `de-DE`, `es-ES`, `fr-FR`, `it-IT`) work offline and render
   identical bytes in every browser. Neural voices that download on demand come later and are not part
   of "Available offline".
-- **Download** WAV (16-bit, 24-bit or 32-bit float), the waveform as SVG or PNG, or the `.py` source.
+- **Download** WAV (16-bit, 24-bit or 32-bit float), **stems** (a ZIP of one 24-bit WAV per track,
+  after track effects and before the master), the waveform as SVG or PNG, or the `.py` source.
 - Share the compressed URL, optionally shorten it through is.gd/AllOrigins, or make a QR code with
   SVG/PNG downloads. Source, files and settings travel together. Local work is restored from
   localStorage; links ask before replacing it.

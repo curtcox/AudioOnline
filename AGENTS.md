@@ -42,6 +42,9 @@ never `file://`.
   transparent. Tracks are processed in ducking order (cycles are errors); a duck keys on the other track
   after its effects and gain but before its pan. The renderer keeps per-track stems (pre-master) for
   mute/solo and stem export; `AudioRenderer.mix` applies the master.
+- The worker keeps the last render's stems for `mix` (mute/solo) and `stems` requests; the editor
+  never receives stems unless it asks. Scene-muted tracks stay out of every mix. The spectrogram and
+  waveform are display-only and may use platform math.
 - Web Audio, WebCodecs and other engine-specific code run only on the editor origin, for playback and
   export of bytes that were already rendered. Playback starts from a user gesture (iOS).
 - Scene errors map to the user's real lines: user code is compiled as `scene.py` with nothing

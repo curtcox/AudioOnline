@@ -93,14 +93,14 @@ const EFFECTS = {
       const threshold = num(e.threshold, 'Threshold', -80, 0, -18), ratio = num(e.ratio, 'Ratio', 1, 50, 4);
       const attack = coefficient(num(e.attack, 'Attack', 0, 1, 0.01), rate), release = coefficient(num(e.release, 'Release', 0.001, 5, 0.15), rate);
       const makeup = DMath.dbToGain(num(e.makeup, 'Makeup gain', -24, 24, 0)), n = channels[0].length;
-      const gains = new Float64Array(n);
+      const gains = new Float64Array(n), limit = DMath.dbToGain(threshold);
       let env = 0;
       // Peak detection linked across channels; the gain computer works in decibels.
       for (let i = 0; i < n; i++) {
         let peak = 0; for (const ch of channels) { const a = Math.abs(ch[i]); if (a > peak) peak = a; }
         env = peak > env ? attack * env + (1 - attack) * peak : release * env + (1 - release) * peak;
-        const level = toDb(env), over = level - threshold;
-        gains[i] = over > 0 ? DMath.dbToGain(-over * (1 - 1 / ratio)) * makeup : makeup;
+        // Logarithms only above the threshold, where the gain computer needs decibels.
+        gains[i] = env > limit ? DMath.dbToGain(-(toDb(env) - threshold) * (1 - 1 / ratio)) * makeup : makeup;
       }
       return channels.map(ch => ch.map((v, i) => v * gains[i]));
     }

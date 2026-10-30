@@ -31,7 +31,7 @@
     editor.session.setMode(type === 'python' ? 'ace/mode/python' : 'ace/mode/text');
     $('filename').textContent = FILES[type][0]; $('filetype').textContent = '/ ' + FILES[type][1];
   }
-  const player = new AudioPlayer({ canvas: $('waveform'), lanes: $('lanes'), button: $('play'), time: $('time'),
+  const player = new AudioPlayer({ canvas: $('waveform'), spectrogram: $('spectrogram'), lanes: $('lanes'), button: $('play'), loopButton: $('loop'), time: $('time'), onMix: remix,
     onClip: line => { editor.gotoLine(line, 0, true); if (document.body.dataset.tab === 'preview' && matchMedia('(max-width: 760px)').matches) return; editor.focus(); } });
   globalThis.audioPlayer = player;
   let marked = null;
@@ -62,6 +62,7 @@
       annotate(null); setError(''); result = next;
       showScenes(next.scenes, next.scene); showOutput(next.output);
       $('empty').hidden = true; player.load(next);
+      if (player.remixed) remix();
       const seconds = next.length / next.sampleRate;
       $('note').textContent = next.length ? '' : 'The scene is silent: add clips with self.add() or self.play().'; $('note').hidden = !!next.length;
       $('status').textContent = `Rendered ${seconds.toFixed(2)} s in ${Math.round(next.ms)} ms`;
@@ -77,6 +78,19 @@
       } else { setError(error.message); $('status').textContent = 'Rendering stopped'; }
       if (!result) $('empty').textContent = 'Fix the scene to hear it.';
     }
+  }
+  /** Mute/solo re-mixes the last render's stems in the sandbox (master effects included); the full mix is restored when nothing is muted or soloed. */
+  let mixRevision = 0;
+  async function remix() {
+    if (!result) return;
+    const own = ++mixRevision;
+    if (!player.remixed) { player.replaceAudio(result.channels); $('note').hidden = !!result.length; return; }
+    try {
+      const mixed = await client.mix(player.enabled());
+      if (own !== mixRevision || mixed.length !== result.length) return;
+      player.replaceAudio(mixed.channels);
+      $('note').textContent = 'Preview mix: muted or soloed tracks are left out. Downloads use the full mix.'; $('note').hidden = false;
+    } catch (_) { /* A render is in progress; the mix is applied when it finishes. */ }
   }
   function persist() {
     try { local?.setItem(STORAGE_KEY, HashBinDocuments.serialize(snapshot())); } catch (_) { /* Storage can be unavailable or full; editing continues. */ }
@@ -150,6 +164,16 @@
       if (format === 'svg' || format === 'png') {
         const svg = AudioWaveform.svg(result.channels);
         return AudioExport.download(format === 'png' ? await AudioExport.png(svg, 1) : svg, `${name}-waveform.${format}`, 'image/svg+xml');
+      }
+      if (format === 'stems') {
+        const { stems, sampleRate } = await client.stems(), used = new Set();
+        const files = stems.map(stem => {
+          let file = stem.name.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^\.+/, '') || 'track';
+          while (used.has(file)) file += '_';
+          used.add(file);
+          return { name: `${file}.wav`, bytes: Wav.encode(stem.channels, sampleRate, 'pcm24') };
+        });
+        return AudioExport.download(new Blob([Zip.build(files)], { type: 'application/zip' }), `${name}-stems.zip`);
       }
       AudioExport.download(new Blob([Wav.encode(result.channels, result.sampleRate, format)], { type: 'audio/wav' }), `${name}.wav`);
     } catch (error) { setError(error.message); }
