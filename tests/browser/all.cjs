@@ -146,11 +146,13 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     const { context: c, page: p } = await context();
     await p.goto(base); await rendered(p);
     await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Pause');
-    // Headless Linux Firefox has no audio device, so its AudioContext never starts running; the clock then stays at 0.
-    const running = await p.waitForFunction(() => audioPlayer.context.state === 'running', null, { timeout: 3000 }).then(() => true, () => false);
-    if (running) await p.waitForFunction(() => audioPlayer.position > 0.05, null, { timeout: 10000 });
-    else console.log(`${name}: no running audio output; playhead advance not checked`);
-    await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Play');
+    // Headless CI hosts have no audio device: Firefox's AudioContext never runs and WebKit ends the source at once.
+    // There the playhead and pause toggle cannot be observed, so only the start of playback is checked.
+    const running = await p.waitForFunction(() => audioPlayer.context.state === 'running' && audioPlayer.playing, null, { timeout: 3000 }).then(() => true, () => false);
+    if (running) {
+      await p.waitForFunction(() => audioPlayer.position > 0.05, null, { timeout: 10000 });
+      await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Play');
+    } else { console.log(`${name}: no running audio output; playhead and pause not checked`); await p.evaluate(() => audioPlayer.pause()); }
     const box = await p.locator('#waveform').boundingBox(); await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     assert.ok(Math.abs(await p.evaluate(() => audioPlayer.position) - 1.25) < 0.05);
     const expected = { pcm16: 44 + 120000 * 4, pcm24: 44 + 120000 * 6, float32: 44 + 120000 * 8 };

@@ -35,7 +35,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Serve repository
-        run: python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/audio-http.log 2>&1 &
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/audio-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/ > /dev/null && break; sleep 1; done
       - run: mkdir -p test-results && node tests/browser/all.cjs http://127.0.0.1:8000/ ${{ matrix.browser }}
       - uses: actions/upload-artifact@v4
         if: failure()
