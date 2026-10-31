@@ -4,6 +4,7 @@ const AudioFiles = typeof module !== 'undefined' ? require('./audio-files.js') :
 const AudioCore = typeof module !== 'undefined' ? require('./audio-core.js') : globalThis.AudioCore;
 const HashBinDocuments = {
   MAX_BYTES: 5 * 1024 * 1024,
+  MAX_SAMPLE_BYTES: 16 * 1024 * 1024,
   bytes(value) { return new TextEncoder().encode(value); },
   decode64(value) { return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)); },
   cidLength(cid) { return this.decode64(cid.slice(0, 8)).reduce((n, b) => n * 256 + b, 0); },
@@ -70,12 +71,12 @@ class HashBinStore {
     loadSDK = () => import(HASHBIN_SDK_URL), timeout = 20000, timers = globalThis } = {}) {
     Object.assign(this, { clientId, redirectUri, storage, transactionStorage, fetchSource, loadSDK, timeout, timers });
   }
-  async bounded(work) {
+  async bounded(work, ms = this.timeout) {
     const controller = new AbortController();
     let timer;
     try {
       return await Promise.race([Promise.resolve().then(() => work(controller.signal)), new Promise((_, reject) => {
-        timer = this.timers.setTimeout(() => { controller.abort(); reject(new Error('HashBin request timed out. Try again.')); }, this.timeout);
+        timer = this.timers.setTimeout(() => { controller.abort(); reject(new Error('HashBin request timed out. Try again.')); }, ms);
       })]);
     } finally { this.timers.clearTimeout(timer); }
   }
@@ -90,6 +91,21 @@ class HashBinStore {
       await HashBinDocuments.verify(cid, bytes);
       return HashBinDocuments.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     });
+  }
+  /** Bytes for Sample(cid=…), verified here so the sandbox never has to trust the content server. */
+  async sample(cid, { signal } = {}) {
+    if (!HashBinDocuments.isCID(cid)) throw new Error('Sample(cid=...) needs a valid HashBin CID.');
+    const length = HashBinDocuments.cidLength(cid);
+    if (length > HashBinDocuments.MAX_SAMPLE_BYTES) throw new Error('CID samples are limited to 16 MiB.');
+    if (length <= 64) return HashBinDocuments.decode64(cid.slice(8));
+    return this.bounded(async own => {
+      // Cancelling the render aborts the download where AbortSignal.any exists; otherwise the timeout ends it.
+      const response = await this.fetchSource(`https://256t.us/${cid}`, { signal: signal && AbortSignal.any ? AbortSignal.any([signal, own]) : own });
+      if (!response.ok) throw new Error(response.status === 404 ? 'The CID sample was not found on HashBin.' : `Loading the CID sample failed (HTTP ${response.status}).`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      await HashBinDocuments.verify(cid, bytes);
+      return bytes;
+    }, 60000);
   }
   async init() {
     if (this.client) return this.client;

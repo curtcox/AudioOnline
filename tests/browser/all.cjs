@@ -69,7 +69,8 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     : await ({ chromium, firefox, webkit }[name]).launch({ headless: true });
   await run('every example renders the golden bytes in this engine, deterministically', async () => {
     const { context: c, page: p } = await context();
-    for (const sample of examples.catalog) {
+    // Neural-voice examples download models on demand; tests/browser/neural.cjs covers that path.
+    for (const sample of examples.catalog.filter(e => !e.neural)) {
       await p.goto(base + '?example=' + sample.id); await rendered(p);
       assert.equal(await p.evaluate(() => editor.getValue()), sample.source);
       assert.equal(await pageHash(p), golden[sample.id].hash, sample.id);
@@ -298,6 +299,69 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await a.evaluate(() => localStorage.removeItem('test:publish'));
     await edit(a, 'from audio import *\nclass After(Scene):\n    pass\n'); await a.waitForFunction(() => !location.hash); assert.ok(new URL(a.url()).searchParams.has('compressed'));
     await auth.close();
+  });
+  await run('audio files and CID samples: upload, verified HashBin fetch, tamper refusal and share links', async () => {
+    const Wav = require('../../src/wav.js'), crypto = require('node:crypto');
+    const wav = Buffer.from(Wav.encode([Float32Array.from({ length: 8000 }, (_, i) => Math.sin(i / 3) * (1 - i / 8000))], 16000, 'pcm16'));
+    const cidOf = bytes => { const size = Buffer.alloc(6); size.writeUIntBE(bytes.length, 0, 6); return size.toString('base64url') + crypto.createHash('sha512').update(bytes).digest().toString('base64url'); };
+    const good = cidOf(wav), tampered = cidOf(Buffer.concat([wav.subarray(0, 44), Buffer.alloc(wav.length - 44, 1)]));
+    const source = `from audio import *\nclass Uploaded(Scene):\n    def construct(self):\n        self.play(Sample("tone.wav"), track="file")\n        self.play(Sample(cid="${good}").speed(2), track="cid")\n`;
+    // The expected bytes come from Node's Pyodide and renderer: the same everywhere.
+    const expected = (await require('../../scripts/node-python.cjs').render(source, {}, 'python', { 'tone.wav': wav.toString('base64') }, { [good]: wav })).hash;
+    const { context: c, page: p } = await context();
+    let fetches = 0;
+    await c.route('https://256t.us/**', route => { fetches++; return route.fulfill({ body: wav, contentType: 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' } }); });
+    await p.goto(base); await rendered(p);
+    await p.click('#files-open');
+    await p.setInputFiles('#file-upload', { name: 'notes.wav', mimeType: 'audio/wav', buffer: Buffer.from('not audio') });
+    await p.waitForFunction(() => /notes\.wav: Not a WAV file/.test(document.getElementById('files-message').textContent));
+    await p.setInputFiles('#file-upload', { name: 'tone.wav', mimeType: 'audio/wav', buffer: wav });
+    await p.waitForFunction(() => document.getElementById('file-count').textContent === '1');
+    assert.match(await p.locator('#file-list').innerText(), /Sample\("tone\.wav"\)[\s\S]*0\.50 s · mono/);
+    await p.click('[data-close="files-dialog"]');
+    await edit(p, source);
+    assert.equal(await pageHash(p), expected, 'uploaded and CID samples render the Node bytes');
+    assert.equal(fetches, 1);
+    assert.deepEqual(await p.$$eval('#lanes .lane-name', names => names.map(n => n.textContent)), ['file', 'cid']);
+    // Content that does not match its CID never reaches the scene; the last good render stays.
+    await p.evaluate(() => { document.getElementById('status').textContent = ''; });
+    await p.evaluate(([src, bad]) => editor.setValue(src.replace(/cid="[^"]+"/, `cid="${bad}"`), -1), [source, tampered]);
+    await p.waitForSelector('#error:not([hidden])'); assert.match(await p.locator('#error').innerText(), /^Line 5: .*does not match its CID/);
+    assert.equal(await pageHash(p), expected, 'last good render is kept');
+    // Files travel with share links.
+    await edit(p, source); await p.click('#share');
+    const link = await p.inputValue('#share-url'), p2 = await c.newPage(); p2.on('dialog', dialog => dialog.accept());
+    await p2.goto(link); await rendered(p2);
+    assert.equal(await p2.locator('#file-count').textContent(), '1'); assert.equal(await pageHash(p2), expected);
+    await c.close();
+  });
+  await run('the gallery lists every example with covers, lazy previews and editor links', async () => {
+    const { context: c, page: p } = await context({ viewport: { width: 375, height: 812 } });
+    await p.goto(base + 'gallery.html');
+    assert.equal(await p.locator('.card').count(), examples.catalog.length);
+    assert.equal(await p.locator('#count').textContent(), `${examples.catalog.length} samples`);
+    assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await p.waitForFunction(() => { const img = document.querySelector('.card img'); return img.complete && img.naturalWidth === 480; });
+    for (const sample of examples.catalog) {
+      const card = p.locator('#' + sample.id);
+      assert.equal(await card.locator('a.load').getAttribute('href'), './?example=' + sample.id);
+      if (sample.neural) { assert.equal(await card.locator('audio').count(), 0); assert.match(await card.locator('.neural').innerText(), /not part of “Available offline”/); continue; }
+      assert.equal(await card.locator('audio').getAttribute('preload'), 'none');
+      const status = await p.evaluate(async url => (await fetch(url, { method: 'HEAD' })).status, `gallery/previews/${sample.id}.m4a`);
+      assert.equal(status, 200, sample.id);
+    }
+    // Playing one preview pauses the others.
+    const paused = await p.evaluate(() => {
+      const [a, b] = document.querySelectorAll('.card audio');
+      Object.defineProperty(a, 'paused', { value: false, configurable: true }); let stopped = false; a.pause = () => { stopped = true; };
+      b.dispatchEvent(new Event('play')); return stopped;
+    });
+    assert.ok(paused);
+    await p.fill('#search', 'door'); assert.deepEqual(await p.$$eval('.card', cards => cards.map(card => card.id)), ['door']);
+    await p.fill('#search', ''); await p.selectOption('#tag', 'samples'); assert.deepEqual(await p.$$eval('.card', cards => cards.map(card => card.id)), ['cid-wavetable', 'uploaded-loop']);
+    await p.click('#uploaded-loop a.load'); await rendered(p);
+    assert.equal(await p.locator('#file-count').textContent(), '1'); assert.equal(await pageHash(p), golden['uploaded-loop'].hash);
+    await c.close();
   });
   await run('phone tabs, More menu, touch-sized controls and no horizontal overflow', async () => {
     const { context: c, page: p } = await context({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: name !== 'firefox' });

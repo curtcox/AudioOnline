@@ -501,3 +501,39 @@ Two small additions:
 - Notation documents get a transparent −1 dBFS master limiter, because sfxr's explosion preset
   exceeds full scale.
 - Ducking keys on the other track after its effects and before its pan.
+
+---
+
+## 12. Realignment with the brief (2026-10-30)
+
+A review against the original brief found these gaps after Step 3, and closed them:
+
+- **§2 sources:** `Sample("file.wav")` (uploaded files, with an **Audio files** dialog) and
+  `Sample(cid="…")` were missing. Both are now in, as decided under D5. CID samples are fetched and
+  SHA-512-verified on the editor origin and handed to the sandbox as bytes; inline CIDs decode in the
+  sandbox.
+- **§7 proposal leftovers:** these are now in:
+  - clip `.speed()` (tape-style resampling) and `.pan()`;
+  - `.loop(until=)`;
+  - `Envelope(curve="linear"|"smooth"|"exp")`;
+  - `Peak`, `LowShelf` and `HighShelf`. The proposal said `Shelf`; two names are clearer than a
+    mode argument.
+- **Step 4:**
+  - five original examples were added: door, sound-design hallway, CID wavetable, uploaded loop
+    and neural narrator, for 16 in all;
+  - `gallery.html` with covers and lazy previews;
+  - `scripts/render-gallery.mjs`, whose `--check` mode is part of `npm run check`.
+  
+  Previews are AAC (`.m4a`), which Safari, Chrome and Firefox play (Firefox through the operating system's
+  AAC decoder). Encoding needs Chromium's
+  platform AAC encoder (macOS/Windows), so CI checks fingerprints and does not re-encode.
+- **Step 5:** hashbin.org registers and stages `audio` with the placeholder app ID. Two findings:
+  - Staging must rehash the offline manifest after it writes the configured migration module, as it
+    already does for Pages. Otherwise the hosted service worker refuses that file.
+  - The legacy notice is deliberately **not** installed yet. It would announce a move to
+    `audio.hashbin.page` before that site exists.
+
+One latent bug surfaced while testing: Pyodide caches imported modules, so a second render with a
+different engine object kept calling the first render's `_audio_js` bridge. The worker always reuses
+one engine and was unaffected; Node rendering with per-render samples was. `AudioPython.run` now
+drops the cached module each run. All existing golden hashes are unchanged.

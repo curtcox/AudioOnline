@@ -112,14 +112,15 @@ class Voices {
     return { rate: 16000, frames: out.length, channels: [out] };
   }
 }
-/** One provider object for the renderer and the Python bridge: speech goes to the voices, the rest to notation. */
+/** One provider object for the renderer and the Python bridge: speech goes to the voices, samples to the sample loader, the rest to notation. */
 const effects = () => typeof module !== 'undefined' ? require('./effects.js') : globalThis.AudioEffects;
-function providers(notation, voices, neural) {
+function providers(notation, voices, neural, samples) {
   const speech = node => node.voice?.startsWith('kitten:') || node.voice?.startsWith('kokoro:') ? neural || voices : voices;
+  const sampler = () => { if (!samples) throw new Error('Sample clips need the sample loader.'); return samples; };
   return {
-    buffer: node => node.op === 'speech' ? speech(node).buffer(node) : notation.buffer(node),
+    buffer: node => node.op === 'speech' ? speech(node).buffer(node) : node.op === 'sample' ? sampler().buffer(node) : notation.buffer(node),
     expand: node => notation.expand(node),
-    measure: node => node.op === 'speech' ? speech(node).measure(node) : node.op === 'fx-tail' ? effects().tail(node.chain) : notation.measure(node)
+    measure: node => node.op === 'speech' ? speech(node).measure(node) : node.op === 'sample' ? sampler().measure(node) : node.op === 'fx-tail' ? effects().tail(node.chain) : notation.measure(node)
   };
 }
 /** A scene asked for a voice that is not loaded yet (the worker loads it and runs the scene again). */

@@ -13,6 +13,8 @@ const AudioPython = {
   },
   /** engines.measure(node) → seconds, called synchronously from audio.py for notation and voice clips. */
   run(py, source, settings, engines = null) {
+    // Python caches imported modules; drop the previous bridge so this run's engines answer.
+    py.runPython("import sys\nsys.modules.pop('_audio_js', None)");
     py.registerJsModule('_audio_js', { measure: json => {
       if (!engines) throw new Error('This clip needs an engine that is not loaded.');
       return engines.measure(JSON.parse(json));

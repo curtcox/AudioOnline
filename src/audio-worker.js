@@ -20,7 +20,14 @@ const neural = new AudioNeuralVoice.NeuralVoices({
   })
 });
 let activeId = null;
-const engines = AudioVoice.providers(notation, voices, neural);
+// Uploaded WAV files arrive with each run; CID samples beyond inline size come verified from the editor.
+const samples = new AudioSamples.Samples();
+let sampleRequest = null;
+const requestSample = cid => new Promise((resolve, reject) => {
+  sampleRequest = { cid, resolve, reject };
+  send({ type: 'sample-request', id: activeId, cid });
+});
+const engines = AudioVoice.providers(notation, voices, neural, samples);
 const ENGINE_CALL = /\b(?:abc|zzfx|sfxr)\s*\(/;
 const capture = text => {
   if (outputSize > AudioCore.MAX_OUTPUT_TEXT) return;
@@ -54,8 +61,9 @@ function loadPython(id) {
   }
   return python;
 }
-async function run({ id, kind, src, settings }) {
+async function run({ id, kind, src, settings, files }) {
   activeId = id; output = []; outputSize = 0;
+  samples.setFiles(files || {});
   const options = AudioCore.options(settings);
   if (kind !== 'python' && !AudioNotation.KINDS.includes(kind)) throw new Error('Unknown source type.');
   if (kind !== 'python' && kind !== 'pattern' || ENGINE_CALL.test(src)) {
@@ -88,7 +96,7 @@ async function run({ id, kind, src, settings }) {
   // The client's render deadline starts now; runtime downloads above have their own limit.
   send({ type: 'started', id });
   const started = performance.now();
-  let scene;
+  let scene, cidLoads = 0;
   for (let attempt = 0; ; attempt++) {
     try { neural.requested = null; scene = AudioPython.run(py, src, options, engines); break; }
     catch (error) {
@@ -97,6 +105,16 @@ async function run({ id, kind, src, settings }) {
         send({ type: 'loading', id });
         send({ type: 'status', id, text: 'Preparing neural speech…' });
         try { await neural.prepare(neural.requested); }
+        catch (failure) { return send({ id, error: { message: String(failure.message || failure), line: error.line, traceback: '' }, scenes: error.scenes, output: output.join('\n') }); }
+        output = []; outputSize = 0; send({ type: 'started', id }); continue;
+      }
+      // A CID sample is fetched and verified by the editor, then the deterministic scene runs again.
+      const cid = error instanceof AudioPython.SceneError && AudioSamples.missingCid(error.message);
+      if (cid) {
+        if (++cidLoads > 32) return send({ id, error: { message: 'Scenes can load up to 32 CID samples.', line: error.line, traceback: '' }, scenes: error.scenes, output: output.join('\n') });
+        send({ type: 'loading', id });
+        send({ type: 'status', id, text: 'Loading sample from HashBin…' });
+        try { samples.add(cid, new Uint8Array(await requestSample(cid))); }
         catch (failure) { return send({ id, error: { message: String(failure.message || failure), line: error.line, traceback: '' }, scenes: error.scenes, output: output.join('\n') }); }
         output = []; outputSize = 0; send({ type: 'started', id }); continue;
       }
@@ -135,6 +153,13 @@ function stems({ id }) {
   send({ id, kind: 'stems', sampleRate: last.rate, length: last.length, stems: list }, list.flatMap(stem => stem.channels.map(channel => channel.buffer)));
 }
 self.onmessage = ({ data }) => {
+  if (data?.kind === 'sample-ready') {
+    if (data.id === activeId && sampleRequest?.cid === data.cid) {
+      const request = sampleRequest; sampleRequest = null;
+      if (data.bytes instanceof ArrayBuffer) request.resolve(data.bytes); else request.reject(new Error(String(data.error || 'The sample could not be loaded.').slice(0, 400)));
+    }
+    return;
+  }
   if (data?.kind === 'voice-ready') {
     if (data.id === activeId && voiceRequest?.name === data.voice) { voiceRequest.resolve(); voiceRequest = null; }
     return;

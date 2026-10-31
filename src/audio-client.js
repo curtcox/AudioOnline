@@ -3,8 +3,9 @@
 const AudioCore = typeof module !== 'undefined' ? require('./audio-core.js') : globalThis.AudioCore;
 class AudioClient {
   constructor({ workerFactory = () => AudioSandbox.factory()(), timeout = 20000, startupTimeout = 120000,
-    onStatus = () => {}, onSlow = () => {}, onVoice = async () => { throw new Error('Neural voice download needs confirmation.'); }, timers = globalThis } = {}) {
-    Object.assign(this, { workerFactory, timeout, startupTimeout, onStatus, onSlow, onVoice, timers });
+    onStatus = () => {}, onSlow = () => {}, onVoice = async () => { throw new Error('Neural voice download needs confirmation.'); },
+    onSample = async () => { throw new Error('CID samples need HashBin.'); }, timers = globalThis } = {}) {
+    Object.assign(this, { workerFactory, timeout, startupTimeout, onStatus, onSlow, onVoice, onSample, timers });
     this.sequence = 0;
   }
   cancel(reason = 'Cancelled') {
@@ -16,7 +17,7 @@ class AudioClient {
     this.worker?.terminate(); this.worker = null;
     pending.reject(new Error(reason));
   }
-  run(src, settings = {}, kind = 'python') {
+  run(src, settings = {}, kind = 'python', files = {}) {
     this.cancel();
     if (!this.worker) this.worker = this.workerFactory();
     const worker = this.worker, id = ++this.sequence;
@@ -38,6 +39,25 @@ class AudioClient {
       worker.onmessage = ({ data }) => {
         if (!data || data.id !== id || this.pending?.id !== id) return;
         if (data.type === 'status') { this.onStatus(String(data.text).slice(0, 200)); return; }
+        if (data.type === 'sample-request') {
+          // The editor fetches and verifies CID samples; the sandbox gets only bytes that match their CID.
+          const { HashBinDocuments } = typeof module !== 'undefined' ? require('./hashbin.js') : globalThis;
+          if (!HashBinDocuments.isCID(data.cid) || this.pending.sample) { finish(new Error('Invalid sample request.')); return; }
+          this.timers.clearTimeout(this.pending.slow);
+          deadline(this.startupTimeout, 'Loading the sample took too long. Check your connection and try again.');
+          const pending = this.pending, cid = data.cid; pending.sample = true;
+          Promise.resolve().then(() => this.onSample(cid, { signal: pending.controller.signal })).then(bytes => {
+            if (this.pending !== pending) return;
+            pending.sample = false;
+            const copy = bytes.slice().buffer;
+            worker.postMessage({ kind: 'sample-ready', id, cid, bytes: copy }, [copy]);
+          }, error => {
+            if (this.pending !== pending) return;
+            pending.sample = false;
+            worker.postMessage({ kind: 'sample-ready', id, cid, error: String(error?.message || error) });
+          });
+          return;
+        }
         if (data.type === 'loading' || data.type === 'voice-request') {
           this.timers.clearTimeout(this.pending.slow);
           deadline(this.startupTimeout, 'Loading the neural voice took too long. Check your connection and try again.');
@@ -65,7 +85,7 @@ class AudioClient {
         } catch (error) { finish(error); }
       };
       worker.onerror = event => finish(new Error(event.message || 'Could not start the audio engine. Reload and try again.'));
-      worker.postMessage({ id, kind: AudioCore.TYPES.includes(kind) ? kind : 'python', src, settings: AudioCore.options(settings) });
+      worker.postMessage({ id, kind: AudioCore.TYPES.includes(kind) ? kind : 'python', src, settings: AudioCore.options(settings), files });
     });
   }
   /** Re-mixes the last render's stems (mute/solo) or returns them; the worker keeps them between calls. */

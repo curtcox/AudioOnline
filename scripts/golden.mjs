@@ -14,11 +14,12 @@ const record = ({ result, hash, scene }) => {
   return { hash, scene, sampleRate: result.sampleRate, channels: result.channels.length, frames: result.length,
     peak: +peak.toFixed(6), rms: +Math.sqrt(sum / (result.length * result.channels.length || 1)).toFixed(6) };
 };
-// Keys are the example id, plus "id:Scene" for each further Scene in the file.
-for (const example of catalog) {
-  const first = await render(example.source, {}, example.type || 'python');
+// Keys are the example id, plus "id:Scene" for each further Scene in the file. Neural-voice examples are
+// left out: their models download on demand and are checked by tests/browser/neural.cjs instead.
+for (const example of catalog.filter(e => !e.neural)) {
+  const first = await render(example.source, {}, example.type || 'python', example.files || {});
   golden[example.id] = record(first);
-  for (const scene of first.scenes.slice(1)) golden[`${example.id}:${scene}`] = record(await render(example.source, { scene }));
+  for (const scene of first.scenes.slice(1)) golden[`${example.id}:${scene}`] = record(await render(example.source, { scene }, 'python', example.files || {}));
 }
 const text = JSON.stringify(golden, null, 2) + '\n';
 if (process.argv.includes('--check')) {

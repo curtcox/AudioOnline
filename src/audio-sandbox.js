@@ -1,7 +1,7 @@
 /* Scenes run with an opaque origin, separate from the editor's storage and service worker. */
 (() => {
 const AudioSandbox = {
-  FILES: ['audio-core.js', 'dmath.js', 'instruments.js', 'mini-notation.js', 'notation.js', 'voice.js', 'neural-manifest.js', 'g2p.js', 'neural-voice.js', 'effects.js', 'audio-renderer.js', 'audio-python.js', 'audio-worker.js'],
+  FILES: ['audio-core.js', 'audio-files.js', 'wav.js', 'hashbin.js', 'samples.js', 'dmath.js', 'instruments.js', 'mini-notation.js', 'notation.js', 'voice.js', 'neural-manifest.js', 'g2p.js', 'neural-voice.js', 'effects.js', 'audio-renderer.js', 'audio-python.js', 'audio-worker.js'],
   factory({ loadSDK = () => import('../vendor/hashbin-sdk-v0.4.0.mjs'),
     base = new URL('src/', location.href).href,
     pyodide = globalThis.AudioCore.PYODIDE_URL,

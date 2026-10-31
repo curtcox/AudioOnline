@@ -9,6 +9,7 @@ const AudioCore = require('../src/audio-core.js');
 const Wav = require('../src/wav.js');
 const { Notation } = require('../src/notation.js');
 const AudioVoice = require('../src/voice.js');
+const AudioSamples = require('../src/samples.js');
 const voices = new AudioVoice.Voices({ read: async file => { const b = fs.readFileSync(path.join(root, 'vendor', file)); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); },
   readText: async file => fs.readFileSync(path.join(root, 'vendor', file), 'utf8'),
   importSource: async source => import('data:text/javascript;base64,' + Buffer.from(source).toString('base64')) });
@@ -32,9 +33,13 @@ function python() {
   })();
   return ready;
 }
-/** Renders source as the worker does and returns the result plus the SHA-256 of its float32 WAV. */
-async function render(source, settings = {}, kind = 'python') {
-  const notes = await notation(), options = AudioCore.options(settings), engine = AudioVoice.providers(notes, voices);
+/** Renders source as the worker does and returns the result plus the SHA-256 of its float32 WAV.
+    files are the document's base64 WAVs; cids maps CIDs to bytes (inline CIDs need none). */
+async function render(source, settings = {}, kind = 'python', files = {}, cids = {}) {
+  const samples = new AudioSamples.Samples();
+  samples.setFiles(files);
+  for (const [cid, bytes] of Object.entries(cids)) samples.add(cid, bytes);
+  const notes = await notation(), options = AudioCore.options(settings), engine = AudioVoice.providers(notes, voices, null, samples);
   if (kind !== 'python') {
     const timeline = notes.timeline(kind, source, options), result = AudioRenderer.render(timeline, [], engine);
     return { timeline, scenes: [], scene: '', result, hash: hash(result) };

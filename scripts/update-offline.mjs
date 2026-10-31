@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 const root = new URL('../', import.meta.url);
 const directories = ['src', 'ace', 'vendor', 'icons'];
-let assets = ['index.html', 'icon.svg', 'manifest.webmanifest', 'service-worker.js', 'LICENSE'];
+let assets = ['index.html', 'gallery.html', 'icon.svg', 'manifest.webmanifest', 'service-worker.js', 'LICENSE'];
 async function walk(directory) {
   for (const entry of await fs.readdir(new URL(directory + '/', root), { withFileTypes: true })) {
     const path = directory + '/' + entry.name;
@@ -11,6 +11,8 @@ async function walk(directory) {
   }
 }
 for (const directory of directories) await walk(directory);
+// Gallery covers work offline; the compressed previews stream on demand like other lazy media.
+for (const entry of await fs.readdir(new URL('gallery/previews/', root))) if (entry.endsWith('.png')) assets.push('gallery/previews/' + entry);
 assets = assets.sort();
 // Pinned CDN files (Pyodide, numpy, lz-string) are part of "Available offline". Neural voices never are.
 const pinned = JSON.parse(await fs.readFile(new URL('scripts/remote-hashes.json', root), 'utf8'));

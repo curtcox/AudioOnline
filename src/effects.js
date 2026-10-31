@@ -28,6 +28,24 @@ function biquad(input, rate, type, freq, q) {
   for (let i = 0; i < input.length; i++) { const x0 = input[i], y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = x0; y2 = y1; y1 = y0; out[i] = y0; }
   return out;
 }
+/** Peaking and shelving equalizers (RBJ cookbook); A = 10^(gain/40). */
+function eq(input, rate, type, freq, gain, q) {
+  const A = DMath.dbToGain(gain / 2), w = 2 * DMath.PI * freq / rate, cw = DMath.cos(w), alpha = DMath.sin(w) / (2 * q), root = 2 * Math.sqrt(A) * alpha;
+  let b0, b1, b2, a0, a1, a2;
+  if (type === 'peak') { b0 = 1 + alpha * A; b1 = -2 * cw; b2 = 1 - alpha * A; a0 = 1 + alpha / A; a1 = -2 * cw; a2 = 1 - alpha / A; }
+  else if (type === 'lowshelf') {
+    b0 = A * ((A + 1) - (A - 1) * cw + root); b1 = 2 * A * ((A - 1) - (A + 1) * cw); b2 = A * ((A + 1) - (A - 1) * cw - root);
+    a0 = (A + 1) + (A - 1) * cw + root; a1 = -2 * ((A - 1) + (A + 1) * cw); a2 = (A + 1) + (A - 1) * cw - root;
+  } else {
+    b0 = A * ((A + 1) + (A - 1) * cw + root); b1 = -2 * A * ((A - 1) + (A + 1) * cw); b2 = A * ((A + 1) + (A - 1) * cw - root);
+    a0 = (A + 1) - (A - 1) * cw + root; a1 = 2 * ((A - 1) - (A + 1) * cw); a2 = (A + 1) - (A - 1) * cw - root;
+  }
+  b0 /= a0; b1 /= a0; b2 /= a0; a1 /= a0; a2 /= a0;
+  const out = new Float64Array(input.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < input.length; i++) { const x0 = input[i], y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = x0; y2 = y1; y1 = y0; out[i] = y0; }
+  return out;
+}
 const extend = (channels, extra) => channels.map(ch => { const out = new Float64Array(ch.length + extra); out.set(ch); return out; });
 
 const EFFECTS = {
@@ -38,6 +56,9 @@ const EFFECTS = {
   lowpass: { tail: () => 0, apply: (channels, e, rate) => channels.map(ch => biquad(ch, rate, 'lowpass', num(e.freq, 'Filter frequency', 1, rate / 2 - 1), num(e.q, 'Q', 0.01, 100, Math.SQRT1_2))) },
   highpass: { tail: () => 0, apply: (channels, e, rate) => channels.map(ch => biquad(ch, rate, 'highpass', num(e.freq, 'Filter frequency', 1, rate / 2 - 1), num(e.q, 'Q', 0.01, 100, Math.SQRT1_2))) },
   bandpass: { tail: () => 0, apply: (channels, e, rate) => channels.map(ch => biquad(ch, rate, 'bandpass', num(e.freq, 'Filter frequency', 1, rate / 2 - 1), num(e.q, 'Q', 0.01, 100, 1))) },
+  peak: { tail: () => 0, apply: (channels, e, rate) => channels.map(ch => eq(ch, rate, 'peak', num(e.freq, 'Filter frequency', 1, rate / 2 - 1), num(e.gain, 'EQ gain', -48, 48, 0), num(e.q, 'Q', 0.01, 100, 1))) },
+  lowshelf: { tail: () => 0, apply: (channels, e, rate) => channels.map(ch => eq(ch, rate, 'lowshelf', num(e.freq, 'Filter frequency', 1, rate / 2 - 1), num(e.gain, 'EQ gain', -48, 48, 0), num(e.q, 'Q', 0.01, 100, Math.SQRT1_2))) },
+  highshelf: { tail: () => 0, apply: (channels, e, rate) => channels.map(ch => eq(ch, rate, 'highshelf', num(e.freq, 'Filter frequency', 1, rate / 2 - 1), num(e.gain, 'EQ gain', -48, 48, 0), num(e.q, 'Q', 0.01, 100, Math.SQRT1_2))) },
   drive: {
     tail: () => 0,
     apply(channels, e) { const k = num(e.amount, 'Drive amount', 0.1, 50, 2), norm = 1 / DMath.tanh(k); return channels.map(ch => ch.map(v => DMath.tanh(k * v) * norm)); }

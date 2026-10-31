@@ -2,13 +2,15 @@
 
 [Open the editor](https://audio.hashbin.page/) (recovery copy:
 [curtcox.github.io/AudioOnline](https://curtcox.github.io/AudioOnline/)) ·
+[Sample gallery](https://audio.hashbin.page/gallery.html) ·
 [Design and dependency report](docs/step1-report.md)
 
 Write a few lines of Python and hear them. Audio Online is "Manim for audio": a `Scene` places
 clips on tracks over time, and the browser renders the result to a WAV. Everything is static: no
-server, API key or build step. It is under construction: Python scenes, four compact notations,
-the bundled offline voice, neural voices on demand, effects, stems and compressed export work now;
-the gallery comes next.
+server, API key or build step. Python scenes, four compact notations, uploaded and CID-addressed
+WAV samples, the bundled offline voice, neural voices on demand, effects, stems, compressed export
+and a 16-example gallery work now. The canonical `audio.hashbin.page` deployment is staged and
+waits for its HashBin app registration.
 
 ```python
 from audio import *
@@ -33,11 +35,20 @@ class Hello(Scene):
   its line in the code. **M** and **S** mute or solo a track in the preview; the sandbox re-mixes the
   stems through the master effects. Downloads always use the full mix. `print` output appears in
   **Output**. A file with several Scenes shows a **Scene** selector.
-- **Sources:** `Sine`, `Square`, `Saw`, `Triangle`, `Noise(color=, seed=)`, `Silence`, and
-  `Samples(array, rate)` for numpy arrays or lists. **Clip operations** return new clips: `.dur()`,
-  `.gain(db)`, `.env(adsr(...))` or `.env(Envelope([...]))`, `.fade_in()`, `.fade_out()`,
-  `.lowpass/.highpass/.bandpass(freq, q)`, `.reverse()`, `.loop(n)`, and `clip[start:end]` in
-  seconds. `a + b` mixes, `a >> b` plays b after a, and `a * n` repeats.
+- **Sources:** `Sine`, `Square`, `Saw`, `Triangle`, `Noise(color=, seed=)`, `Silence`,
+  `Samples(array, rate)` for numpy arrays or lists, and WAV files: `Sample("kick.wav")` from
+  **Audio files**, or `Sample(cid="…")` from HashBin. **Clip operations** return new clips: `.dur()`,
+  `.gain(db)`, `.env(adsr(...))` or `.env(Envelope([...], curve="linear"|"smooth"|"exp"))`,
+  `.fade_in()`, `.fade_out()`, `.lowpass/.highpass/.bandpass(freq, q)`, `.reverse()`,
+  `.speed(rate)` (tape-style: pitch and length change together), `.pan(position)`, `.loop(n)` or
+  `.loop(until=seconds)`, and `clip[start:end]` in seconds. `a + b` mixes, `a >> b` plays b after
+  a, and `a * n` repeats.
+- **Audio files** attaches WAV files (mono or stereo, 8–32-bit PCM or 32-bit float; 2 MiB each,
+  5 MiB with the source) that travel with saves and share links; you can also drop them on the
+  editor. `Sample(cid=...)` loads a WAV saved on HashBin: the editor downloads it from 256t.us and
+  checks it against the CID before the scene sees it (up to 16 MiB; CIDs of 64 bytes or less carry
+  their content and need no network). Compressed uploads are not accepted, because their decoders
+  differ between browsers.
 - **Placement:** `self.add(clip, at=, track=, gain=, pan=)` places a clip; `self.play()` places it at
   `self.time` and advances the cursor; `self.wait(seconds)` moves the cursor. `self.track(name).gain()`
   or `.mute()` and `self.master.gain()` adjust whole tracks. Scene attributes `sample_rate`,
@@ -54,7 +65,8 @@ class Hello(Scene):
     (`bass(pluck): c2 ~ g1 ~`), with `bpm` and `cycles` lines; one cycle is four beats. Drums:
     `bd sn hh oh cp lt mt ht rim cb cy`. `pattern(text, bpm=, cycles=, instrument=)` in Python.
   - `Note("C4", seconds, instrument)` and `Drum("cp")` place single sounds.
-- **Effects:** `Gain(db)`, `LowPass/HighPass/BandPass(freq, q)`, `Drive(amount)`,
+- **Effects:** `Gain(db)`, `LowPass/HighPass/BandPass(freq, q)`, `Peak(freq, gain, q)`,
+  `LowShelf/HighShelf(freq, gain)`, `Drive(amount)`,
   `Delay(time, feedback, mix)`, `Reverb(room, damp, mix, width)`, `Compressor(threshold, ratio, attack,
   release, makeup)` and `Limiter(ceiling, release)` go on clips with `clip.fx(...)`, on tracks with
   `self.track("music").fx(...)` (or `self.tracks["music"]`) and on `self.master.fx(...)`. Reverb and
@@ -79,6 +91,9 @@ class Hello(Scene):
 - Share the compressed URL, optionally shorten it through is.gd/AllOrigins, or make a QR code with
   SVG/PNG downloads. Source, files and settings travel together. Local work is restored from
   localStorage; links ask before replacing it.
+- The [sample gallery](gallery.html) has 16 original examples (voice, music, sound effects and
+  mixes), each with a cover and a short compressed preview that loads when you play it. **Load in
+  editor** (or `?example=<id>`) opens one. The neural-voice example has a cover only.
 - After the status says **Available offline**, the editor, Python and numpy work offline (about
   27 MB with the voices). Install the app through your browser's Add to Home Screen/Install action. New versions offer
   **Update and reload**; the current source is saved first.
@@ -128,6 +143,7 @@ After changing shipped files:
 
 ```sh
 node scripts/golden.mjs        # only after an intentional renderer/audio.py/example change
+node scripts/render-gallery.mjs  # covers and AAC previews; needs Playwright Chromium with AAC (macOS/Windows)
 node scripts/update-offline.mjs
 npm test
 npm run check

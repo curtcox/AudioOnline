@@ -86,3 +86,41 @@ test('Python effects, tracks and the master describe the same chains, with check
   await fails('self.track("a").duck(under="a")', /names another track/, 5);
   await fails('self.add(Sine(1).dur(1), track="a")\nself.track("a").duck(under="b")\nself.track("b").duck(under="a")\nself.add(Sine(1).dur(1), track="b")', /Ducking forms a loop/, null);
 });
+
+test('Peak and shelving EQ boost where they should and are transparent at 0 dB', () => {
+  const settle = ch => peak(ch.slice(ch.length / 2));
+  const [boosted] = AudioEffects.apply([{ type: 'peak', freq: 1000, gain: 12, q: 2 }], [tone(0.5, 0.1, 1000)], R);
+  assert.ok(Math.abs(settle(boosted) - 0.1 * 10 ** (12 / 20)) < 0.005, String(settle(boosted)));
+  const [away] = AudioEffects.apply([{ type: 'peak', freq: 1000, gain: 12, q: 2 }], [tone(0.5, 0.1, 100)], R);
+  assert.ok(Math.abs(settle(away) - 0.1) < 0.01, 'a narrow peak leaves distant frequencies alone');
+  const [low] = AudioEffects.apply([{ type: 'lowshelf', freq: 300, gain: -12 }], [tone(0.5, 0.1, 50)], R);
+  const [high] = AudioEffects.apply([{ type: 'highshelf', freq: 3000, gain: 6 }], [tone(0.5, 0.1, 12000)], R);
+  assert.ok(Math.abs(settle(low) - 0.1 * 10 ** (-12 / 20)) < 0.005, String(settle(low)));
+  assert.ok(Math.abs(settle(high) - 0.1 * 10 ** (6 / 20)) < 0.01, String(settle(high)));
+  for (const type of ['peak', 'lowshelf', 'highshelf']) {
+    const [flat] = AudioEffects.apply([{ type, freq: 1000, gain: 0 }], [tone(0.1)], R);
+    assert.ok(flat.every((v, i) => Math.abs(v - tone(0.1)[i]) < 1e-12), type);
+  }
+  assert.throws(() => AudioEffects.apply([{ type: 'peak', freq: 1000, gain: 60 }], [tone(0.1)], R), /EQ gain must be a number from -48 to 48/);
+});
+
+test('speed() resamples like tape, pan() places clips, loop(until=) cuts the last repeat and curves shape envelopes', { timeout: 120000 }, async () => {
+  const crossings = (ch, a, b) => { let n = 0; for (let i = Math.round(a) + 1; i < Math.round(b); i++) if ((ch[i - 1] < 0) !== (ch[i] < 0)) n++; return n; };
+  const { result } = await render(`from audio import *
+
+class S(Scene):
+    def construct(self):
+        self.add(Sine(440).dur(1).speed(2).pan(-1), at=0, track="fast")
+        self.add(Sine(440).dur(0.25).loop(until=0.6).pan(1), at=1, track="loop")
+        self.add(Sine(440).dur(1).speed(0.5), at=2, track="slow")
+        self.add(Sine(440).dur(1).env(Envelope([(0, 1), (1, 0.01)], curve="exp")), at=4, track="exp")
+`);
+  const [L, Rt] = result.channels;
+  assert.equal(result.length, 5 * R);
+  assert.ok(Math.abs(crossings(L, 0.1 * R, 0.4 * R) - 0.3 * 880 * 2) <= 2, 'speed(2) doubles the pitch');
+  assert.ok(peak(Rt.slice(0, R / 2)) === 0 && peak(L.slice(0, 0.45 * R)) > 0.9, 'pan(-1) is hard left');
+  assert.ok(peak(L.slice(R, 1.6 * R)) < 1e-12 && rms(Rt, 1.55 * R, 1.6 * R) > 0.5 && rms(Rt, 1.6 * R + 10, 2 * R) === 0, 'loop(until=0.6) ends at 0.6 s');
+  assert.ok(Math.abs(crossings(L, 2.2 * R, 3.8 * R) - 1.6 * 220 * 2) <= 2, 'speed(0.5) halves the pitch and doubles the length');
+  // Equal decibel steps: halfway between 1 and 0.01 is 0.1.
+  assert.ok(Math.abs(peak(L.slice(4.49 * R, 4.51 * R)) - 0.1 * Math.SQRT1_2) < 0.005, String(peak(L.slice(4.49 * R, 4.51 * R))));
+});

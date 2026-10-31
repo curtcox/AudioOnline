@@ -18,8 +18,14 @@
   const local = safeStorage('localStorage');
   const setError = message => { $('error').textContent = message; $('error').hidden = !message; $('preview').classList.toggle('stale', !!message); };
   const voiceAssets = new AudioVoiceAssets();
+  // Verified CID samples stay in memory for this page, so re-renders and new workers do not download them again.
+  const cidSamples = new Map();
+  const loadSample = (cid, options) => {
+    if (!cidSamples.has(cid)) cidSamples.set(cid, store.sample(cid, options).catch(error => { cidSamples.delete(cid); throw error; }));
+    return cidSamples.get(cid);
+  };
   const client = new AudioClient({ workerFactory: AudioSandbox.factory({ voiceAssets }),
-    onVoice: (name, options) => voiceAssets.ensure(name, options), onStatus: text => { $('status').textContent = text; },
+    onVoice: (name, options) => voiceAssets.ensure(name, options), onSample: loadSample, onStatus: text => { $('status').textContent = text; },
     onSlow: () => { $('status').textContent = 'Still rendering…'; $('cancel').hidden = false; } });
   const scheduler = new RenderScheduler({ detect: showType, render, renderDelay: 600, detectionDelay: 250 });
   let shownType = null;
@@ -58,7 +64,7 @@
     try {
       AudioFiles.validate(files, editor.getValue());
       showType();
-      const next = await client.run(editor.getValue(), settings, currentType());
+      const next = await client.run(editor.getValue(), settings, currentType(), files);
       if (ownRevision !== revision) return;
       $('cancel').hidden = true;
       annotate(null); setError(''); result = next;
@@ -121,6 +127,7 @@
     if (options.renderer === 'auto' && doc.type && AudioCore.TYPES.includes(doc.type) && AudioDetector.detect(doc.src).type !== doc.type) options.renderer = doc.type;
     try { files = { ...nextFiles }; settings = options; editor.setValue(doc.src, -1); editor.session.setUndoManager(new ace.UndoManager()); syncOptions(); }
     finally { applying = false; }
+    listFiles();
     revision++; scheduler.cancel(); client.cancel(); saved = null; showType(); persist(); render();
   }
   const shareClient = new ShareClient();
@@ -131,7 +138,7 @@
   let linkLoad = false;
   function acceptLink(doc) {
     const same = (a, b) => a.src === b.src && JSON.stringify(a.files || {}) === JSON.stringify(b.files || {}), current = snapshot();
-    if (same(current, doc) || current.src === AudioExamples.defaultSource || AudioExamples.catalog.some(sample => same(current, { src: sample.source }))) return true;
+    if (same(current, doc) || current.src === AudioExamples.defaultSource || AudioExamples.catalog.some(sample => same(current, { src: sample.source, files: sample.files || {} }))) return true;
     if (confirm('This link opens a different scene. Replace the scene saved in this browser?\n\nChoose Cancel to keep your current work.')) return true;
     refreshShare({ address: true });
     return false;
@@ -210,6 +217,39 @@
   $('qr-open').onclick = () => { $('qr-dialog').showModal(); refreshQr(); };
   $('qr-svg').onclick = () => AudioExport.download(qrMarkup, 'scene-qr.svg', 'image/svg+xml');
   $('qr-png').onclick = async () => { try { AudioExport.download(await AudioExport.png(qrMarkup, 1), 'scene-qr.png'); } catch (error) { $('qr-message').textContent = error.message; } };
+  // Audio files: WAV only, checked with the same decoder the sandbox uses before they join the document.
+  function listFiles() {
+    $('file-count').textContent = Object.keys(files).length;
+    $('file-list').replaceChildren(...Object.entries(files).map(([name, data]) => {
+      const row = document.createElement('div'); row.className = 'file-row';
+      const title = document.createElement('span'); title.textContent = `Sample("${name}")`;
+      const size = document.createElement('small'), bytes = AudioFiles.decodedSize(data);
+      try { const wav = Wav.decode(Uint8Array.from(atob(data), c => c.charCodeAt(0))); size.textContent = `${(wav.channels[0].length / wav.sampleRate).toFixed(2)} s · ${wav.channels.length === 1 ? 'mono' : 'stereo'} · ${Math.ceil(bytes / 1024)} KiB`; }
+      catch (_) { size.textContent = `${Math.ceil(bytes / 1024)} KiB`; }
+      const remove = document.createElement('button'); remove.textContent = 'Remove'; remove.setAttribute('aria-label', 'Remove ' + name);
+      remove.onclick = () => { const next = { ...files }; delete next[name]; files = next; changed(); listFiles(); };
+      row.append(title, size, remove); return row;
+    }));
+  }
+  async function upload(list) {
+    // A failed batch does not partly replace existing files.
+    try {
+      const next = { ...files };
+      for (const file of list) {
+        if (!AudioFiles.validName(file.name)) throw new Error(`${file.name}: rename it to 1–64 letters, digits, dots, underscores or hyphens, ending in .wav.`);
+        if (file.size > AudioFiles.MAX_FILE) throw new Error(`${file.name} exceeds the 2 MiB file limit.`);
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        try { Wav.decode(bytes); } catch (error) { throw new Error(`${file.name}: ${error.message}`); }
+        next[file.name] = AudioFiles.encode64(bytes);
+      }
+      AudioFiles.validate(next, editor.getValue()); files = next; changed(); listFiles(); $('files-message').textContent = '';
+    } catch (error) { $('files-message').textContent = error.message; if (!$('files-dialog').open) $('files-dialog').showModal(); }
+  }
+  $('files-open').onclick = () => { listFiles(); $('files-message').textContent = ''; $('files-dialog').showModal(); };
+  $('file-add').onclick = () => $('file-upload').click();
+  $('file-upload').onchange = async event => { await upload(event.target.files); event.target.value = ''; };
+  $('editor-pane').addEventListener('dragover', event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }, true);
+  $('editor-pane').addEventListener('drop', event => { if (event.dataTransfer.files.length) { event.preventDefault(); event.stopPropagation(); upload(event.dataTransfer.files); } }, true);
   document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => $(button.dataset.close).close());
   window.addEventListener('pagehide', persist);
   window.addEventListener('offline-before-reload', persist);
@@ -235,7 +275,7 @@
       else if (parsed?.kind === 'example') {
         const sample = AudioExamples.catalog.find(item => item.id === parsed.id);
         if (!sample) throw new Error('Unknown example. Choose a sample from the gallery.');
-        const doc = { src: sample.source, type: sample.type || 'python', files: {} };
+        const doc = { src: sample.source, type: sample.type || 'python', files: sample.files || {} };
         if (acceptLink(doc)) apply(doc);
       } else if (parsed?.kind === 'cid') {
         linkLoad = true;

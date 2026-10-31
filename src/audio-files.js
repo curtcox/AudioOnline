@@ -7,6 +7,11 @@ class AudioFiles {
     return /^[A-Za-z0-9._-]{1,64}$/.test(name) && !name.includes('..') && /\.wav$/i.test(name) && !this.RESERVED.includes(name);
   }
   static bytes(text) { return new TextEncoder().encode(text).length; }
+  static encode64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+    return btoa(binary);
+  }
   static decodedSize(base64) { return Math.floor(base64.length * 3 / 4) - (base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0); }
   static validate(files, source = '') {
     if (!files || typeof files !== 'object' || Array.isArray(files)) throw new Error('Audio files must be a name-to-base64 object.');

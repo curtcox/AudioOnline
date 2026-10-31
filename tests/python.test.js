@@ -11,11 +11,12 @@ const fails = async (source, pattern, line) => {
 };
 
 test('every example renders to its golden bytes, twice', { timeout: 240000 }, async () => {
-  for (const example of catalog) {
-    const kind = example.type || 'python', first = await render(example.source, {}, kind), second = await render(example.source, {}, kind);
+  // Neural-voice examples download models on demand; tests/browser/neural.cjs covers them.
+  for (const example of catalog.filter(e => !e.neural)) {
+    const kind = example.type || 'python', files = example.files || {}, first = await render(example.source, {}, kind, files), second = await render(example.source, {}, kind, files);
     assert.equal(first.hash, golden[example.id].hash, example.id);
     assert.equal(second.hash, first.hash, `${example.id} repeat`);
-    for (const name of first.scenes.slice(1)) assert.equal((await render(example.source, { scene: name }, kind)).hash, golden[`${example.id}:${name}`].hash, name);
+    for (const name of first.scenes.slice(1)) assert.equal((await render(example.source, { scene: name }, kind, files)).hash, golden[`${example.id}:${name}`].hash, name);
   }
 });
 

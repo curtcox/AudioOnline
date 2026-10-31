@@ -10,9 +10,9 @@ import traceback
 
 __all__ = [
     "Scene", "Clip", "Track", "Placement", "Envelope", "adsr",
-    "Sine", "Square", "Saw", "Triangle", "Noise", "Silence", "Samples",
+    "Sine", "Square", "Saw", "Triangle", "Noise", "Silence", "Samples", "Sample",
     "Note", "Drum", "abc", "zzfx", "sfxr", "pattern", "INSTRUMENTS", "DRUMS", "Speech", "VOICES",
-    "Effect", "Gain", "LowPass", "HighPass", "BandPass", "Drive", "Delay", "Reverb", "Compressor", "Limiter",
+    "Effect", "Gain", "LowPass", "HighPass", "BandPass", "Peak", "LowShelf", "HighShelf", "Drive", "Delay", "Reverb", "Compressor", "Limiter",
 ]
 
 VOICES = (
@@ -52,18 +52,27 @@ def _user_line():
 
 
 class Envelope:
-    """Gain over time. Envelope([(0, 0), (0.1, 1), (1, 0)]) interpolates linearly; see also adsr()."""
+    """Gain over time. Envelope([(0, 0), (0.1, 1), (1, 0)]) interpolates between points; see also adsr().
 
-    def __init__(self, points):
+    curve="linear" (default), "smooth" (eases in and out) or "exp" (even steps in decibels between
+    positive levels, which sounds natural for fades).
+    """
+
+    def __init__(self, points, curve="linear"):
         pts = [(_number(t, "envelope time", 0), _number(v, "envelope level")) for t, v in points]
         if not pts:
             raise ValueError("an Envelope needs at least one (time, level) point")
         if any(b[0] < a[0] for a, b in zip(pts, pts[1:])):
             raise ValueError("Envelope times must not decrease")
+        if curve not in ("linear", "smooth", "exp"):
+            raise ValueError("Envelope curve must be 'linear', 'smooth' or 'exp'")
         self._json = {"kind": "points", "points": [list(p) for p in pts]}
+        if curve != "linear":
+            self._json["curve"] = curve
 
     def __repr__(self):
-        return f"Envelope({self._json['points']!r})"
+        curve = self._json.get("curve")
+        return f"Envelope({self._json['points']!r}{f', curve={curve!r}' if curve else ''})"
 
 
 class _ADSR(Envelope):
@@ -141,10 +150,28 @@ class Clip:
         self._finite("reversing it")
         return self._wrap("reverse")
 
-    def loop(self, count):
-        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
-            raise ValueError("loop() needs a whole number of repeats")
+    def loop(self, count=None, until=None):
+        """Repeat count times, or until the clip is `until` seconds long (the last repeat is cut short)."""
+        if (count is None) == (until is None):
+            raise TypeError("loop() takes a number of repeats, or until=seconds")
+        if until is not None:
+            length, one = _number(until, "loop length", 0, 300), self._finite("looping it")
+            if one <= 0:
+                raise ValueError("cannot loop a clip with no length")
+            import math
+            return self.loop(max(1, math.ceil(length / one)))[0:length]
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0 or count > 100000:
+            raise ValueError("loop() needs a whole number of repeats from 0 to 100,000")
         return self._wrap("loop", duration=self._finite("looping it") * count, count=count)
+
+    def speed(self, rate):
+        """Play faster or slower, like tape: speed(2) is an octave higher and half as long."""
+        rate = _number(rate, "speed", 0.25, 4)
+        return self._wrap("speed", duration=self._finite("changing its speed") / rate, rate=rate)
+
+    def pan(self, position):
+        """Place the clip from left (-1) to right (1). Placement pan (add(..., pan=)) applies on top."""
+        return self._wrap("pan", position=_number(position, "pan", -1, 1))
 
     def __mul__(self, count):
         return self.loop(count)
@@ -249,6 +276,22 @@ def Samples(data, rate):
     _buffers.append({"rate": rate, "frames": frames, "channels": payload})
     node = {"op": "buffer", "ref": len(_buffers) - 1}
     return Clip(node, frames / rate, f"Samples({frames} frames @ {rate} Hz)")
+
+
+def Sample(file=None, cid=None):
+    """A WAV file: Sample("kick.wav") from the document's Audio files, or Sample(cid="…") from HashBin.
+
+    CID samples are verified against their CID before use. Short ones (64 bytes or less) are inline.
+    """
+    if (file is None) == (cid is None):
+        raise TypeError('Sample() needs a file name, like Sample("kick.wav"), or cid="..."')
+    if file is not None:
+        if not isinstance(file, str):
+            raise TypeError("Sample file names are text")
+        return _engine_clip({"op": "sample", "file": file}, f"Sample({file[:40]!r})")
+    if not isinstance(cid, str):
+        raise TypeError("Sample cid is text")
+    return _engine_clip({"op": "sample", "cid": cid}, f"Sample(cid={cid[:12]!r}…)")
 
 
 def _measure(node):
@@ -398,6 +441,24 @@ class HighPass(Effect):
 class BandPass(Effect):
     def __init__(self, freq, q=1.0):
         super().__init__("bandpass", freq=_number(freq, "filter frequency", 1, 96000), q=_number(q, "Q", 0.01, 100))
+
+
+class Peak(Effect):
+    """A bell-shaped boost or cut: gain in dB at freq Hz, narrower as q rises."""
+    def __init__(self, freq, gain, q=1.0):
+        super().__init__("peak", freq=_number(freq, "filter frequency", 1, 96000), gain=_number(gain, "gain (dB)", -48, 48), q=_number(q, "Q", 0.01, 100))
+
+
+class LowShelf(Effect):
+    """Boost or cut everything below freq Hz by gain dB."""
+    def __init__(self, freq, gain, q=0.7071067811865476):
+        super().__init__("lowshelf", freq=_number(freq, "filter frequency", 1, 96000), gain=_number(gain, "gain (dB)", -48, 48), q=_number(q, "Q", 0.01, 100))
+
+
+class HighShelf(Effect):
+    """Boost or cut everything above freq Hz by gain dB."""
+    def __init__(self, freq, gain, q=0.7071067811865476):
+        super().__init__("highshelf", freq=_number(freq, "filter frequency", 1, 96000), gain=_number(gain, "gain (dB)", -48, 48), q=_number(q, "Q", 0.01, 100))
 
 
 class Drive(Effect):

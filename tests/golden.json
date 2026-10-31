@@ -106,5 +106,41 @@
     "frames": 339840,
     "peak": 0.954632,
     "rms": 0.068045
+  },
+  "door": {
+    "hash": "3332ef438e7e2b31c434246973b2b5ed94f26d569d847cfda7f420764b6048d9",
+    "scene": "Door",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 249527,
+    "peak": 0.891251,
+    "rms": 0.067564
+  },
+  "haunted-hallway": {
+    "hash": "8e7354cb25f7cc0a2d6653bf4f2b758f2179d300d9edced036e968c235fe3a94",
+    "scene": "Hallway",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 432000,
+    "peak": 0.891251,
+    "rms": 0.078002
+  },
+  "cid-wavetable": {
+    "hash": "6fbc08d135366b50ce902970887d92451cc62588f689e5b79684b11d761ee201",
+    "scene": "Wavetable",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 249600,
+    "peak": 0.573589,
+    "rms": 0.15476
+  },
+  "uploaded-loop": {
+    "hash": "a8b7022634cb69abdf21e678304b75f244f1be75d592f4eb1b0c0282c975ebf7",
+    "scene": "Breakbeat",
+    "sampleRate": 48000,
+    "channels": 2,
+    "frames": 240000,
+    "peak": 0.891251,
+    "rms": 0.136068
   }
 }

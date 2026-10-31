@@ -23,7 +23,7 @@ function rng(seed) {
 const mixSeed = (a, b) => { let h = Math.imul((a ^ 0x9e3779b9) >>> 0, 0x85ebca6b) ^ Math.imul(b + 0x632be5ab, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
 
 class Renderer {
-  /** providers.buffer(node) → { rate, frames, channels } for sampled clips (zzfx, sfxr, speech);
+  /** providers.buffer(node) → { rate, frames, channels } for sampled clips (zzfx, sfxr, speech, sample);
       providers.expand(node) → an "events" node for notation clips (abc, pattern). */
   constructor(timeline, buffers = [], providers = {}) {
     this.providers = providers;
@@ -63,7 +63,7 @@ class Renderer {
     switch (node.op) {
       case 'osc': case 'noise': return Infinity;
       case 'silence': case 'dur': return this.toFrames(node.seconds, line);
-      case 'buffer': case 'zzfx': case 'sfxr': case 'speech': { const b = this.buffer(node); return Math.round(b.frames * this.rate / b.rate); }
+      case 'buffer': case 'zzfx': case 'sfxr': case 'speech': case 'sample': { const b = this.buffer(node); return Math.round(b.frames * this.rate / b.rate); }
       case 'abc': case 'pattern': return this.frames(this.expanded(node));
       case 'events': return this.toFrames(node.seconds, line);
       case 'note': {
@@ -73,7 +73,12 @@ class Renderer {
       case 'drum':
         if (!Instruments.drums.includes(node.name)) throw new TimelineError(`Unknown drum "${String(node.name).slice(0, 20)}". Use one of: ${Instruments.drums.join(', ')}.`, line);
         return Instruments.drumLength(node.name, this.rate);
-      case 'gain': case 'env': case 'fade': case 'filter': case 'reverse': return this.frames(node.of);
+      case 'gain': case 'env': case 'fade': case 'filter': case 'reverse': case 'pan': return this.frames(node.of);
+      case 'speed': {
+        const n = this.frames(node.of);
+        if (!Number.isFinite(n)) throw new TimelineError('Give a generator a .dur() before changing its speed.', line);
+        return Math.round(n * (1 / finite(node.rate, 'Speed', line, { min: 0.25, max: 4 })));
+      }
       case 'fx': {
         const n = this.frames(node.of);
         if (!Number.isFinite(n)) throw new TimelineError('Give a generator a .dur() before adding effects to it.', line);
@@ -134,7 +139,7 @@ class Renderer {
       case 'noise': return [this.noise(node, n)];
       case 'silence': return [new Float64Array(n)];
       case 'dur': return this.fit(this.render(node.of, Math.min(n, this.frames(node))), n);
-      case 'buffer': case 'zzfx': case 'sfxr': case 'speech': return this.fit(this.resampled(this.buffer(node)).map(ch => ch.slice()), n);
+      case 'buffer': case 'zzfx': case 'sfxr': case 'speech': case 'sample': return this.fit(this.resampled(this.buffer(node)).map(ch => ch.slice()), n);
       case 'abc': case 'pattern': return this.render(this.expanded(node), n);
       case 'events': {
         let out = [new Float64Array(n)];
@@ -160,6 +165,19 @@ class Renderer {
       case 'filter': return this.render(node.of, n).map(ch => this.biquad(node, ch));
       case 'fx': return this.fit(this.effect(() => AudioEffects.apply(node.chain, this.render(node.of, this.frames(node.of)), this.rate), node), n);
       case 'reverse': { const len = Math.min(n, this.frames(node.of)); return this.fit(this.render(node.of, len).map(ch => ch.slice().reverse()), n); }
+      case 'speed': {
+        // Tape-style: resampling by 1/rate changes pitch and length together.
+        const src = this.render(node.of, this.frames(node.of));
+        return this.fit(this.resample({ channels: src, frames: src[0].length }, 1 / node.rate), n);
+      }
+      case 'pan': {
+        const channels = this.render(node.of, n), pan = finite(node.position, 'Pan', node.line, { min: -1, max: 1 });
+        if (this.channels === 1) return channels;
+        const theta = (pan + 1) * DMath.PI / 4, left = DMath.cos(theta), right = DMath.sin(theta);
+        if (channels.length === 1) return [channels[0].map(v => v * left), channels[0].map(v => v * right)];
+        const norm = 1 / DMath.cos(DMath.PI / 4);
+        return [channels[0].map(v => v * left * norm), channels[1].map(v => v * right * norm)];
+      }
       case 'slice': {
         const start = this.toFrames(node.start, node.line), len = this.frames(node);
         return this.fit(this.render(node.of, start + Math.min(n, len)).map(ch => ch.slice(start)), n);
@@ -247,11 +265,18 @@ class Renderer {
       if (!Array.isArray(points) || !points.length || points.length > 10000) throw new TimelineError('An Envelope needs 1–10,000 (time, level) points.', line);
       const frames = points.map(([t, v]) => [this.toFrames(t, line), finite(v, 'Envelope level', line, { min: -100, max: 100 })]);
       for (let k = 1; k < frames.length; k++) if (frames[k][0] < frames[k - 1][0]) throw new TimelineError('Envelope times must not decrease.', line);
+      const curve = env.curve ?? 'linear';
+      if (!['linear', 'smooth', 'exp'].includes(curve)) throw new TimelineError('Envelope curves are linear, smooth or exp.', line);
       let k = 0;
       for (let t = 0; t < n; t++) {
         while (k < frames.length - 1 && frames[k + 1][0] <= t) k++;
         const [t0, v0] = frames[k], next = frames[k + 1];
-        gains[t] = t < t0 ? v0 : next ? v0 + (next[1] - v0) * (t - t0) / (next[0] - t0) : v0;
+        if (t < t0 || !next) { gains[t] = v0; continue; }
+        const f = (t - t0) / (next[0] - t0), v1 = next[1];
+        if (curve === 'linear') gains[t] = v0 + (v1 - v0) * (t - t0) / (next[0] - t0);
+        else if (curve === 'smooth') gains[t] = v0 + (v1 - v0) * (f * f * (3 - 2 * f));
+        // Equal steps in decibels between positive levels; otherwise linear.
+        else gains[t] = v0 > 0 && v1 > 0 ? v0 * DMath.exp(f * DMath.log(v1 / v0)) : v0 + (v1 - v0) * f;
       }
     } else throw new TimelineError('Unknown envelope.', line);
     for (const ch of channels) for (let i = 0; i < n; i++) ch[i] *= gains[i];
@@ -291,10 +316,10 @@ class Renderer {
     if (!this.resamples.has(b)) this.resamples.set(b, this.resample(b));
     return this.resamples.get(b);
   }
-  resample(b) {
+  resample(b, ratio = this.rate / b.rate) {
     const channels = b.channels.map(ch => Float64Array.from(ch));
-    if (b.rate === this.rate) return channels;
-    const ratio = this.rate / b.rate, cutoff = Math.min(1, ratio), half = 16, phases = 512;
+    if (ratio === 1) return channels;
+    const cutoff = Math.min(1, ratio), half = 16, phases = 512;
     const width = Math.ceil(half / cutoff), table = new Float64Array((2 * width + 1) * phases + 1);
     const kernel = x => {
       const ax = Math.abs(x); if (ax >= width) return 0;

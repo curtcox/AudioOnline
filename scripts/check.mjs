@@ -9,3 +9,5 @@ for (const file of ['offline-assets.js', 'service-worker.js']) run('--check', fi
 const py = spawnSync('python3', ['-c', 'import ast,sys; ast.parse(open("src/py/audio.py").read())'], { stdio: 'inherit' });
 if (py.error) console.warn('python3 not found; skipped audio.py syntax check (unit tests still run it).'); else if (py.status) process.exit(py.status);
 run('scripts/update-offline.mjs', '--check');
+// Gallery covers and previews must match the current examples and renderer (fingerprints only; nothing renders).
+run('scripts/render-gallery.mjs', '--check');
