@@ -3,3 +3,4 @@ test-results/
 .pyodide-cache/
 .DS_Store
 .claude/
+.neural-cache/

@@ -3,14 +3,15 @@
 const AudioCore = typeof module !== 'undefined' ? require('./audio-core.js') : globalThis.AudioCore;
 class AudioClient {
   constructor({ workerFactory = () => AudioSandbox.factory()(), timeout = 20000, startupTimeout = 120000,
-    onStatus = () => {}, onSlow = () => {}, timers = globalThis } = {}) {
-    Object.assign(this, { workerFactory, timeout, startupTimeout, onStatus, onSlow, timers });
+    onStatus = () => {}, onSlow = () => {}, onVoice = async () => { throw new Error('Neural voice download needs confirmation.'); }, timers = globalThis } = {}) {
+    Object.assign(this, { workerFactory, timeout, startupTimeout, onStatus, onSlow, onVoice, timers });
     this.sequence = 0;
   }
   cancel(reason = 'Cancelled') {
     if (!this.pending) return;
     const pending = this.pending;
     this.pending = null;
+    pending.controller.abort();
     this.timers.clearTimeout(pending.timer); this.timers.clearTimeout(pending.slow);
     this.worker?.terminate(); this.worker = null;
     pending.reject(new Error(reason));
@@ -23,6 +24,7 @@ class AudioClient {
       const finish = (error, result) => {
         if (this.pending?.id !== id) return;
         this.timers.clearTimeout(this.pending.timer); this.timers.clearTimeout(this.pending.slow);
+        this.pending.controller.abort();
         this.pending = null;
         if (error && !error.scene) { worker.terminate(); this.worker = null; }
         if (error) reject(error); else resolve(result);
@@ -31,13 +33,28 @@ class AudioClient {
         this.timers.clearTimeout(this.pending.timer);
         this.pending.timer = this.timers.setTimeout(() => this.cancel(message), ms);
       };
-      this.pending = { id, reject, slow: null, timer: null };
+      this.pending = { id, reject, slow: null, timer: null, controller: new AbortController() };
       deadline(this.startupTimeout, 'Loading the audio engine took too long. Check your connection and try again.');
       worker.onmessage = ({ data }) => {
-        if (!data || data.id !== id) return;
+        if (!data || data.id !== id || this.pending?.id !== id) return;
         if (data.type === 'status') { this.onStatus(String(data.text).slice(0, 200)); return; }
+        if (data.type === 'loading' || data.type === 'voice-request') {
+          this.timers.clearTimeout(this.pending.slow);
+          deadline(this.startupTimeout, 'Loading the neural voice took too long. Check your connection and try again.');
+          if (data.type === 'voice-request') {
+            const pins = typeof module !== 'undefined' ? require('./neural-manifest.js') : globalThis.AudioNeuralManifest;
+            if (!pins.voices.includes(data.voice) || this.pending.voice) { finish(new Error('Invalid neural voice request.')); return; }
+            const pending = this.pending; pending.voice = true;
+            Promise.resolve().then(() => this.onVoice(data.voice, { signal: pending.controller.signal })).then(() => {
+              if (this.pending !== pending) return;
+              pending.voice = false; worker.postMessage({ kind: 'voice-ready', id, voice: data.voice });
+            }).catch(error => { if (this.pending === pending) finish(error); });
+          }
+          return;
+        }
         if (data.type === 'started') {
           deadline(this.timeout, `Rendering timed out after ${this.timeout / 1000} seconds. Simplify the scene and try again.`);
+          this.timers.clearTimeout(this.pending.slow);
           this.pending.slow = this.timers.setTimeout(() => { if (this.pending?.id === id) this.onSlow(); }, 1500);
           return;
         }

@@ -6,9 +6,9 @@
 
 Write a few lines of Python and hear them. Audio Online is "Manim for audio": a `Scene` places
 clips on tracks over time, and the browser renders the result to a WAV. Everything is static: no
-server, API key or build step. It is under construction: Python scenes and four compact notations
-the bundled offline voice, effects, stems and compressed export work now; neural voices and the
-gallery come next.
+server, API key or build step. It is under construction: Python scenes, four compact notations,
+the bundled offline voice, neural voices on demand, effects, stems and compressed export work now;
+the gallery comes next.
 
 ```python
 from audio import *
@@ -64,8 +64,14 @@ class Hello(Scene):
 - **Voice:** `self.say("text", voice="pico:en-US", speed=1, pitch=1)` speaks at the cursor on the
   `voice` track and moves the cursor to the end; `Speech(...)` is the same as a clip. The bundled
   SVOX Pico voices (`pico:en-US`, `en-GB`, `de-DE`, `es-ES`, `fr-FR`, `it-IT`) work offline and render
-  identical bytes in every browser. Neural voices that download on demand come later and are not part
-  of "Available offline".
+  identical bytes in every browser. English neural voices download only after confirmation:
+  `kitten:Bella`, `Jasper`, `Luna`, `Bruno`, `Rosie`, `Hugo`, `Kiki`, `Leo` (use the `kitten:` prefix
+  for each), or `kokoro:af_heart` and the other American English voices in `VOICES`. First downloads
+  are about **45.6 MB** for Kitten or **104.5 MB** for Kokoro, including runtime and dictionary;
+  switching models reuses the common files. They use a separate verified cache and are not part of
+  "Available offline". Text stays in your browser. Neural voices support `speed=0.5…2`, `pitch=1`;
+  Pico supports pitch changes. The original CMUdict front end handles English numbers and common
+  abbreviations; unfamiliar words use approximate letter-to-sound rules.
 - **Download** WAV (16-bit, 24-bit or 32-bit float), **Opus (.webm)** and **AAC (.m4a)** where the
   browser's WebCodecs can encode them (Opus: Chromium, Firefox, Safari/WebKit; AAC: Chromium,
   Safari/WebKit; WAV always works), **stems** (a ZIP of one 24-bit WAV per track,
@@ -77,9 +83,11 @@ class Hello(Scene):
   27 MB with the voices). Install the app through your browser's Add to Home Screen/Install action. New versions offer
   **Update and reload**; the current source is saved first.
 
-Rendering is deterministic: the same scene produces byte-identical audio in Chromium, Firefox and
+Rendering is deterministic: the same non-neural scene produces byte-identical audio in Chromium, Firefox and
 Safari/WebKit. Python only describes the timeline; a JavaScript renderer that uses exact arithmetic
-(no platform math library or Web Audio) produces the samples.
+(no platform math library or Web Audio) produces the samples. Neural inference uses single-threaded ONNX WASM; Kitten’s random operators
+are seeded and sessions restart per utterance. Tests require fresh-session byte equality in each
+engine; cross-engine neural equality is diagnostic rather than a permanent renderer contract.
 
 ## Run and test locally
 
@@ -101,6 +109,12 @@ npx playwright install chromium firefox webkit
 npm run test:browser -- http://127.0.0.1:8000/ chromium
 npm run test:browser -- http://127.0.0.1:8000/ firefox
 npm run test:browser -- http://127.0.0.1:8000/ webkit
+# Actual Kitten model tests (also run for each engine in CI):
+node scripts/fetch-neural.mjs
+node tests/browser/neural.cjs http://127.0.0.1:8000/ chromium
+# Optional larger Kokoro test:
+node scripts/fetch-neural.mjs --kokoro
+KOKORO=1 node tests/browser/neural.cjs http://127.0.0.1:8000/ chromium
 ```
 
 The unit suite runs the real `audio.py` under the pinned Pyodide in Node and checks that every
@@ -136,6 +150,8 @@ MIT licensed; see [LICENSE](LICENSE).
   see [vendor/PROVENANCE.md](vendor/PROVENANCE.md).
 - SVOX Pico (Apache-2.0; SVOX AG and the Android Open Source Project) via `@echogarden/svoxpico-wasm`
   0.2.0, with AOSP language files; see [vendor/PROVENANCE.md](vendor/PROVENANCE.md).
+- On-demand ONNX Runtime Web 1.30.0 (MIT), Kitten nano 0.8 int8 and Kokoro-82M v1.0
+  (Apache-2.0), CMUdict (BSD-style); pins and license notices in [vendor/PROVENANCE.md](vendor/PROVENANCE.md).
 - lz-string 1.5.0: [vendor/LICENSE-lz-string](vendor/LICENSE-lz-string).
 - QR encoder: Project Nayuki, MIT; full notice retained in `src/qr.js`, ported from modl via Gnuplot Online.
 - HashBin SDK v0.4.0, vendored byte for byte.

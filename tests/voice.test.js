@@ -64,6 +64,6 @@ test('say() places speech on the voice track and advances the cursor; voices nam
   assert.equal(timeline.placements[1].clip.voice, 'pico:de-DE'); assert.equal(timeline.placements[1].line, 7);
   const fails = async (body, pattern, line) => assert.rejects(render(scene(body)), e => pattern.test(e.message) && e.line === line);
   await fails('self.say("")', /needs some text/, 5);
-  await fails('self.say("hi", voice="kokoro:af")', /unknown voice/, 5);
+  await fails('self.say("hi", voice="kokoro:unknown")', /unknown voice/, 5);
   await fails('self.say("hi", speed=4)', /speed must be at most 2/, 5);
 });

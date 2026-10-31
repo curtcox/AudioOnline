@@ -15,7 +15,11 @@ __all__ = [
     "Effect", "Gain", "LowPass", "HighPass", "BandPass", "Drive", "Delay", "Reverb", "Compressor", "Limiter",
 ]
 
-VOICES = ("pico:en-US", "pico:en-GB", "pico:de-DE", "pico:es-ES", "pico:fr-FR", "pico:it-IT")
+VOICES = (
+    "pico:en-US", "pico:en-GB", "pico:de-DE", "pico:es-ES", "pico:fr-FR", "pico:it-IT",
+    "kitten:Bella", "kitten:Jasper", "kitten:Luna", "kitten:Bruno", "kitten:Rosie", "kitten:Hugo", "kitten:Kiki", "kitten:Leo",
+    "kokoro:af", "kokoro:af_alloy", "kokoro:af_aoede", "kokoro:af_bella", "kokoro:af_heart", "kokoro:af_jessica", "kokoro:af_kore", "kokoro:af_nicole", "kokoro:af_nova", "kokoro:af_river", "kokoro:af_sarah", "kokoro:af_sky", "kokoro:am_adam", "kokoro:am_echo", "kokoro:am_eric", "kokoro:am_fenrir", "kokoro:am_liam", "kokoro:am_michael", "kokoro:am_onyx", "kokoro:am_puck", "kokoro:am_santa",
+)
 
 INSTRUMENTS = ("sine", "square", "piano", "organ", "pad", "bell", "pluck")
 DRUMS = ("bd", "sn", "hh", "oh", "cp", "lt", "mt", "ht", "rim", "cb", "cy")
@@ -347,11 +351,11 @@ def pattern(text, bpm=120, cycles=1, instrument="pluck", seed=0):
 
 
 def Speech(text, voice="pico:en-US", speed=1.0, pitch=1.0):
-    """Synthesized speech. The bundled Pico voices work offline: pico:en-US, en-GB, de-DE, es-ES, fr-FR, it-IT."""
+    """Synthesized speech. Pico works offline. Kitten and Kokoro English voices download after confirmation."""
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Speech needs some text")
     if voice not in VOICES:
-        raise ValueError(f"unknown voice {voice!r}; bundled voices are {', '.join(VOICES)}")
+        raise ValueError(f"unknown voice {voice!r}; voices are {', '.join(VOICES)}")
     node = {"op": "speech", "text": text, "voice": voice, "speed": _number(speed, "speed", 0.5, 2), "pitch": _number(pitch, "pitch", 0.5, 2)}
     short = text if len(text) <= 32 else text[:31] + "…"
     return _engine_clip(node, f"say({short!r})")

@@ -17,7 +17,9 @@
   const safeStorage = name => { try { return window[name]; } catch (_) { return undefined; } };
   const local = safeStorage('localStorage');
   const setError = message => { $('error').textContent = message; $('error').hidden = !message; $('preview').classList.toggle('stale', !!message); };
-  const client = new AudioClient({ onStatus: text => { $('status').textContent = text; },
+  const voiceAssets = new AudioVoiceAssets();
+  const client = new AudioClient({ workerFactory: AudioSandbox.factory({ voiceAssets }),
+    onVoice: (name, options) => voiceAssets.ensure(name, options), onStatus: text => { $('status').textContent = text; },
     onSlow: () => { $('status').textContent = 'Still rendering…'; $('cancel').hidden = false; } });
   const scheduler = new RenderScheduler({ detect: showType, render, renderDelay: 600, detectionDelay: 250 });
   let shownType = null;

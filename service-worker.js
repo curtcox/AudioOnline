@@ -33,7 +33,7 @@ self.addEventListener('install', event => event.waitUntil(populate()));
 self.addEventListener('activate', event => event.waitUntil((async () => {
   await self.clients.claim();
   // Older page clients can continue using their matching assets until they reload.
-  for (const name of await caches.keys()) if (name.startsWith('audioonline-') && name !== CACHE) await caches.delete(name);
+  for (const name of await caches.keys()) if (name.startsWith('audioonline-') && name !== CACHE && name !== 'audioonline-voices-v1') await caches.delete(name);
 })()));
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;

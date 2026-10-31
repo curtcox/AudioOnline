@@ -25,3 +25,20 @@ The language files are redistributable under Apache-2.0 (copyright SVOX AG and t
 Project). Debian classes them as non-free because their source data is not published; Curt accepted this
 in the Step 1 sign-off (D2). `src/voice.js` loads the engine module unmodified (`locateFile` and
 `wasmBinary` are passed in). `tests/voice.test.js` checks the SHA-256 of every file.
+
+## Neural voices (on demand)
+
+`src/neural-manifest.js` pins exact URLs, byte sizes and SHA-256s. These large files are **not**
+vendored or included in the offline manifest. The editor downloads them only after confirmation.
+
+| Asset | Pin | License |
+|---|---|---|
+| ONNX Runtime Web WASM runtime, glue and binary | `onnxruntime-web@1.30.0` | MIT, Microsoft; [license](neural/ONNXRuntime-LICENSE.txt), [third party notices](neural/ONNXRuntime-ThirdPartyNotices.txt) |
+| Kitten nano 0.8 int8 model, NPZ styles and configuration | `KittenML/kitten-tts-nano-0.8-int8` commit `84781d74e29ee25217551556398b42f80593a813` | Apache-2.0, KittenML; [model card](https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8/blob/84781d74e29ee25217551556398b42f80593a813/README.md) |
+| Kokoro-82M v1.0 q8f16 model, tokenizer and American English styles | `onnx-community/Kokoro-82M-v1.0-ONNX` commit `1939ad2a8e416c0acfeecc08a694d14ef25f2231` | Apache-2.0, hexgrad / ONNX Community; [model card](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/blob/1939ad2a8e416c0acfeecc08a694d14ef25f2231/README.md) |
+| CMU pronunciation dictionary | `cmusphinx/cmudict` commit `74790861f652b15e4ac49015a90074ad62a27690` | BSD-style, Carnegie Mellon; [license](neural/CMUdict-LICENSE.txt) |
+
+[Apache-2.0 license text](neural/Apache-2.0.txt). The original G2P, NPZ reader, ONNX seed patch and
+model adapters live in `src/g2p.js` and `src/neural-voice.js`. No wrapper or GPL phonemizer is used.
+Kitten's two random operators receive explicit seed attributes in memory, after integrity checking;
+the original downloaded file is cached unchanged. Inference sessions restart per utterance.

@@ -10,7 +10,17 @@ const notation = new AudioNotation.Notation({
 const fetchVendor = (file, as) => fetch('../vendor/' + file).then(response => { if (!response.ok) throw new Error(`${file} download failed`); return response[as](); });
 const voices = new AudioVoice.Voices({ read: file => fetchVendor(file, 'arrayBuffer'), readText: file => fetchVendor(file, 'text'),
   importSource: source => import(URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))) });
-const engines = AudioVoice.providers(notation, voices);
+let voiceRequest = null;
+const neural = new AudioNeuralVoice.NeuralVoices({
+  read: url => fetch(url).then(response => { if (!response.ok) throw new Error('Neural voice download failed.'); return response.arrayBuffer(); }),
+  importModule: url => hashbinSandbox.import(url),
+  consent: name => new Promise(resolve => {
+    voiceRequest = { name, resolve };
+    send({ type: 'voice-request', id: activeId, voice: name });
+  })
+});
+let activeId = null;
+const engines = AudioVoice.providers(notation, voices, neural);
 const ENGINE_CALL = /\b(?:abc|zzfx|sfxr)\s*\(/;
 const capture = text => {
   if (outputSize > AudioCore.MAX_OUTPUT_TEXT) return;
@@ -45,7 +55,7 @@ function loadPython(id) {
   return python;
 }
 async function run({ id, kind, src, settings }) {
-  output = []; outputSize = 0;
+  activeId = id; output = []; outputSize = 0;
   const options = AudioCore.options(settings);
   if (kind !== 'python' && !AudioNotation.KINDS.includes(kind)) throw new Error('Unknown source type.');
   if (kind !== 'python' && kind !== 'pattern' || ENGINE_CALL.test(src)) {
@@ -80,11 +90,19 @@ async function run({ id, kind, src, settings }) {
   const started = performance.now();
   let scene;
   for (let attempt = 0; ; attempt++) {
-    try { scene = AudioPython.run(py, src, options, engines); break; }
+    try { neural.requested = null; scene = AudioPython.run(py, src, options, engines); break; }
     catch (error) {
+      if (error instanceof AudioPython.SceneError && neural.requested && (error.message.includes(AudioNeuralVoice.MISSING) || error.message.includes(AudioVoice.MISSING + neural.requested.voice))) {
+        if (attempt >= 200) return send({ id, error: { message: 'Scenes are limited to 200 neural utterances.', line: error.line, traceback: '' }, scenes: error.scenes, output: output.join('\n') });
+        send({ type: 'loading', id });
+        send({ type: 'status', id, text: 'Preparing neural speech…' });
+        try { await neural.prepare(neural.requested); }
+        catch (failure) { return send({ id, error: { message: String(failure.message || failure), line: error.line, traceback: '' }, scenes: error.scenes, output: output.join('\n') }); }
+        output = []; outputSize = 0; send({ type: 'started', id }); continue;
+      }
       // A voice named at run time (not literally in the source) loads, then the deterministic scene runs again.
-      const voice = error instanceof AudioPython.SceneError && attempt < AudioVoice.VOICES.length && AudioVoice.missingVoice(error.message);
-      if (voice) { await voices.load([voice]); output = []; outputSize = 0; continue; }
+      const voice = error instanceof AudioPython.SceneError && AudioVoice.missingVoice(error.message);
+      if (voice && !voices.loaded(voice.slice(5))) { await voices.load([voice]); output = []; outputSize = 0; continue; }
       if (error instanceof AudioPython.SceneError) return send({ id, error: { message: error.message, line: error.line, traceback: error.traceback }, scenes: error.scenes, output: output.join('\n') });
       throw error;
     }
@@ -117,6 +135,10 @@ function stems({ id }) {
   send({ id, kind: 'stems', sampleRate: last.rate, length: last.length, stems: list }, list.flatMap(stem => stem.channels.map(channel => channel.buffer)));
 }
 self.onmessage = ({ data }) => {
+  if (data?.kind === 'voice-ready') {
+    if (data.id === activeId && voiceRequest?.name === data.voice) { voiceRequest.resolve(); voiceRequest = null; }
+    return;
+  }
   const task = data?.kind === 'mix' ? async () => mix(data) : data?.kind === 'stems' ? async () => stems(data) : () => run(data);
   task().catch(error => send({ id: data.id, error: { message: String(error?.message || error), line: null, traceback: '' }, output: output.join('\n') }));
 };
