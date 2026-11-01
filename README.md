@@ -89,8 +89,7 @@ class Hello(Scene):
   Safari/WebKit; WAV always works), **stems** (a ZIP of one 24-bit WAV per track,
   after track effects and before the master), the waveform as SVG or PNG, or the `.py` source.
 - Share the compressed URL, optionally shorten it through is.gd/AllOrigins, or make a QR code with
-  SVG/PNG downloads. Source, files and settings travel together. Local work is restored from
-  localStorage; links ask before replacing it.
+  SVG/PNG downloads. Source, files and settings travel together. Local drafts are recovered explicitly with **Resume saved work**; links always open their document.
 - The [sample gallery](gallery.html) has 16 original examples (voice, music, sound effects and
   mixes), each with a cover and a short compressed preview that loads when you play it. **Load in
   editor** (or `?example=<id>`) opens one. The neural-voice example has a cover only.
@@ -172,3 +171,7 @@ MIT licensed; see [LICENSE](LICENSE).
 - QR encoder: Project Nayuki, MIT; full notice retained in `src/qr.js`, ported from modl via Gnuplot Online.
 - HashBin SDK v0.4.0, vendored byte for byte.
 - The editor shell, sharing and HashBin controls are adapted from Gnuplot Online and ManimOnline.
+
+### URLs and saved work
+
+Program URLs always open the linked document, regardless of browser history or local drafts. The homepage opens the default example. Use **Resume saved work** in the editor controls to recover local drafts. Viewing or running a link keeps saved work; editing it retains the previous draft for recovery.

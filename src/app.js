@@ -16,6 +16,7 @@
   const currentLink = () => saved?.fingerprint === fingerprint() ? saved.link : links().fallback;
   const safeStorage = name => { try { return window[name]; } catch (_) { return undefined; } };
   const local = safeStorage('localStorage');
+  const drafts = new LocalDrafts({ storage: local, key: STORAGE_KEY, serialize: value => HashBinDocuments.serialize(value), parse: value => HashBinDocuments.parse(value) });
   const setError = message => { $('error').textContent = message; $('error').hidden = !message; $('preview').classList.toggle('stale', !!message); };
   const voiceAssets = new AudioVoiceAssets();
   // Verified CID samples stay in memory for this page, so re-renders and new workers do not download them again.
@@ -100,9 +101,7 @@
       $('note').textContent = 'Preview mix: muted or soloed tracks are left out. Downloads use the full mix.'; $('note').hidden = false;
     } catch (_) { /* A render is in progress; the mix is applied when it finishes. */ }
   }
-  function persist() {
-    try { local?.setItem(STORAGE_KEY, HashBinDocuments.serialize(snapshot())); } catch (_) { /* Storage can be unavailable or full; editing continues. */ }
-  }
+  function persist(edit = false) { drafts.attempt(snapshot(), edit === true); }
   function refreshShare({ address = false } = {}) {
     try {
       const url = currentLink(); $('share-url').value = url;
@@ -112,14 +111,15 @@
   }
   function changed() {
     if (applying) return;
-    revision++; client.cancel(); hashbin.cancelLoad(); shareClient.cancel(); saved = null;
+    revision++; client.cancel(); hashbin.cancelLoad(); shareClient.cancel(); saved = null; persist(true);
     $('share-status').textContent = ''; $('cancel').hidden = true; $('status').textContent = 'Waiting for edits…';
     clearTimeout(persistTimer);
     persistTimer = setTimeout(() => { persist(); refreshShare({ address: true }); }, 180);
     scheduler.schedule({ detect: true });
   }
   function syncOptions() { $('sample-rate').value = settings.sampleRate; $('channels').value = settings.channels; $('renderer').value = settings.renderer; }
-  function apply(doc) {
+  function apply(doc, { run = true } = {}) {
+    clearTimeout(persistTimer); drafts.opened();
     const nextFiles = doc.files || {}; AudioFiles.validate(nextFiles, doc.src);
     applying = true;
     // A saved type the detector would not choose is kept as an explicit renderer choice.
@@ -128,23 +128,14 @@
     try { files = { ...nextFiles }; settings = options; editor.setValue(doc.src, -1); editor.session.setUndoManager(new ace.UndoManager()); syncOptions(); }
     finally { applying = false; }
     listFiles();
-    revision++; scheduler.cancel(); client.cancel(); saved = null; showType(); persist(); render();
+    revision++; scheduler.cancel(); client.cancel(); saved = null; showType(); if (run) render();
   }
   const shareClient = new ShareClient();
   const redirect = new URL('./', location.href); redirect.search = ''; redirect.hash = '';
   const store = new HashBinStore({ clientId: document.querySelector('meta[name="hashbin-client-id"]').content.trim(),
     redirectUri: redirect.href, storage: local, transactionStorage: safeStorage('sessionStorage') });
-  // Links can come from anyone; never let one silently replace work kept in this browser.
-  let linkLoad = false;
-  function acceptLink(doc) {
-    const same = (a, b) => a.src === b.src && JSON.stringify(a.files || {}) === JSON.stringify(b.files || {}), current = snapshot();
-    if (same(current, doc) || current.src === AudioExamples.defaultSource || AudioExamples.catalog.some(sample => same(current, { src: sample.source, files: sample.files || {} }))) return true;
-    if (confirm('This link opens a different scene. Replace the scene saved in this browser?\n\nChoose Cancel to keep your current work.')) return true;
-    refreshShare({ address: true });
-    return false;
-  }
   const hashbin = new HashBinPanel({ store, getSnapshot: snapshot, getFingerprint: fingerprint,
-    onLoad: (doc, cid) => { if (linkLoad && !acceptLink(doc)) return false; apply(doc); const link = HashBinDocuments.link(location.href, cid); saved = { fingerprint: fingerprint(), link }; history.replaceState(null, '', link); refreshShare(); },
+    onLoad: (doc, cid) => { apply(doc); const link = HashBinDocuments.link(location.href, cid); saved = { fingerprint: fingerprint(), link }; history.replaceState(null, '', link); refreshShare(); },
     onSaved: (_cid, value, link) => { saved = { fingerprint: value, link }; history.replaceState(null, '', link); refreshShare(); } });
   editor.session.on('change', changed);
   $('render').onclick = () => { scheduler.cancel(); revision++; client.cancel(); render(); };
@@ -251,16 +242,16 @@
   $('editor-pane').addEventListener('dragover', event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }, true);
   $('editor-pane').addEventListener('drop', event => { if (event.dataTransfer.files.length) { event.preventDefault(); event.stopPropagation(); upload(event.dataTransfer.files); } }, true);
   document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => $(button.dataset.close).close());
+  drafts.mount($('extra-tools'), doc => { hashbin.cancelLoad(); apply(doc, { run: false }); refreshShare({ address: true }); $('status').textContent = 'Saved work restored — press Render.'; });
   window.addEventListener('pagehide', persist);
   window.addEventListener('offline-before-reload', persist);
   async function loadUrl({ initial = false } = {}) {
     hashbin.cancelLoad();
     try {
-      if (initial) {
-        store.retireLegacyTokens().catch(() => { /* Retried on the next load. */ });
-        let restored = null; try { const text = local?.getItem(STORAGE_KEY); if (text) restored = HashBinDocuments.parse(text); } catch (_) { /* Ignore invalid or unavailable storage. */ }
-        apply(restored || { src: AudioExamples.defaultSource });
-      }
+      clearTimeout(persistTimer); scheduler.cancel(); client.cancel(); revision++; saved = null;
+      drafts.opened(); applying = true; editor.setValue('', -1); applying = false;
+      player.stop(); player.result = null; result = null; $('play').disabled = true; $('empty').hidden = false; $('output').textContent = '';
+      if (initial) store.retireLegacyTokens().catch(() => {});
       const loadRevision = revision;
       const parsed = ShareLinks.parse(location.href, LZString.decompressFromEncodedURIComponent);
       if (parsed?.kind === 'publish') {
@@ -271,19 +262,19 @@
         if (published.cid && current) saved = { fingerprint: fingerprint(), link: HashBinDocuments.link(location.href, published.cid) };
         if (saved) history.replaceState(null, '', saved.link); else refreshShare({ address: true });
         $('hashbin-status').textContent = published.error || 'Saved to HashBin.';
-      } else if (parsed?.kind === 'source') { if (acceptLink(parsed)) apply(parsed); }
+      } else if (parsed?.kind === 'source') apply(parsed);
       else if (parsed?.kind === 'example') {
         const sample = AudioExamples.catalog.find(item => item.id === parsed.id);
         if (!sample) throw new Error('Unknown example. Choose a sample from the gallery.');
         const doc = { src: sample.source, type: sample.type || 'python', files: sample.files || {} };
-        if (acceptLink(doc)) apply(doc);
+        apply(doc);
       } else if (parsed?.kind === 'cid') {
-        linkLoad = true;
-        try { await hashbin.load(parsed.cid); } finally { linkLoad = false; }
+        await hashbin.load(parsed.cid);
         return;
       }
+      if (!parsed) apply({ src: AudioExamples.defaultSource });
       refreshShare();
-    } catch (error) { if (initial && !editor.getValue()) apply({ src: AudioExamples.defaultSource }); setError(error.message); }
+    } catch (error) { setError(error.message); }
   }
   window.addEventListener('hashchange', () => loadUrl());
   await loadUrl({ initial: true });

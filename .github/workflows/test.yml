@@ -40,6 +40,10 @@ jobs:
           python-version: '3.12'
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: URL identity and draft recovery
+        run: node tests/browser/url-state.cjs
+        env:
+          BROWSER: ${{ matrix.browser }}
       - name: Serve repository
         run: |
           python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/audio-http.log 2>&1 &

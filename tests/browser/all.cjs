@@ -154,6 +154,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       await p.waitForFunction(() => audioPlayer.position > 0.05, null, { timeout: 10000 });
       await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Play');
     } else { console.log(`${name}: no running audio output; playhead and pause not checked`); await p.evaluate(() => audioPlayer.pause()); }
+    await p.locator('#waveform').scrollIntoViewIfNeeded();
     const box = await p.locator('#waveform').boundingBox(); await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     assert.ok(Math.abs(await p.evaluate(() => audioPlayer.position) - 1.25) < 0.05);
     const expected = { pcm16: 44 + 120000 * 4, pcm24: 44 + 120000 * 6, float32: 44 + 120000 * 8 };
@@ -189,6 +190,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     assert.match(download.suggestedFilename(), named('episode-stems.zip'));
     const zip = fs.readFileSync(await download.path());
     assert.equal(zip.readUInt32LE(0), 0x04034b50); assert.match(zip.toString('latin1'), /music\.wav[\s\S]*voice\.wav/);
+    await p.locator('#waveform').scrollIntoViewIfNeeded();
     const box = await p.locator('#waveform').boundingBox();
     await p.mouse.move(box.x + box.width * 0.25, box.y + 20); await p.mouse.down(); await p.mouse.move(box.x + box.width * 0.5, box.y + 20, { steps: 5 }); await p.mouse.up();
     const loop = await p.evaluate(() => ({ region: audioPlayer.region, looping: audioPlayer.looping, position: audioPlayer.position }));
@@ -239,10 +241,10 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.route('https://api.allorigins.win/**', route => route.fulfill({ json: { contents: 'https://is.gd/test123' } }));
     await p.click('#shorten'); await p.waitForFunction(() => document.getElementById('share-url').value === 'https://is.gd/test123');
     // Settings survive the localStorage restore.
-    await p.goto(base); await rendered(p); assert.equal(await p.inputValue('#sample-rate'), '22050');
+    await p.goto(base); await rendered(p); await p.locator('#resume-work').evaluate(button=>button.click()); await p.click('#restore-work'); await p.waitForFunction(()=>!document.getElementById('draft-dialog').open); assert.equal(await p.inputValue('#sample-rate'), '22050');
     await c.close();
   });
-  await run('HashBin inline CIDs, stale loads, links that ask first and mocked Publish saves', async () => {
+  await run('HashBin inline CIDs, stale loads, URL identity and recovery and mocked Publish saves', async () => {
     const { context: c, page: p } = await context();
     const bare = 'from audio import *\nclass Cid(Scene):\n    pass\n', inline = cidFor(bare);
     assert.ok(bare.length <= 64);
@@ -261,9 +263,11 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.route('https://256t.us/' + remote, async route => { await pending; await route.fulfill({ body: payload }); });
     await p.fill('#hashbin-cid', remote); await p.click('#hashbin-load'); await edit(p, 'from audio import *\nclass NewerEdit(Scene):\n    pass\n'); release();
     await p.waitForTimeout(250); assert.match(await p.evaluate(() => editor.getValue()), /NewerEdit/);
-    // A link that would replace work kept in this browser asks first.
-    await p.waitForTimeout(300); p.once('dialog', dialog => dialog.dismiss()); await p.goto(base + '?example=numpy-glide'); await rendered(p);
-    assert.match(await p.evaluate(() => editor.getValue()), /NewerEdit/); assert.ok(!p.url().includes('example='));
+    // Local drafts cannot block a program URL; previous work is recoverable.
+    const previousDraft = await p.evaluate(() => localStorage.getItem('audioonline:document'));
+    await p.goto(base + '?example=numpy-glide'); await rendered(p);
+    assert.equal(await p.evaluate(() => editor.getValue()), example('numpy-glide').source);
+    assert.equal(await p.evaluate(() => localStorage.getItem('audioonline:document')), previousDraft);
     await c.close();
     const { context: auth, page: a } = await context();
     await auth.route(base + '**', async route => {
