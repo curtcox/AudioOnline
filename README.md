@@ -183,3 +183,5 @@ The shell, URL/CID tools, Publish dialogs, QR image/camera loading, draft recove
 Publish is visibly disabled until a registered public client ID is supplied. Canonical hosting and remote deployment remain explicit owner actions; this migration stages a gated manual Pages workflow. Neural voices retain their separate verified cache and consent flow.
 
 Run `npm test`, `npm run check`, `npm run golden -- --check`, `npm run test:contracts` and the actual engine browser suite. `npm run gallery:audio` regenerates the original PNG/AAC previews with real Chromium AAC support; `npm run gallery` renders the shared covers from those PNGs. Run `npm run docs` and `npm run offline` after shipped-file changes. Node 22.12+ is required.
+
+Canonical registration (2026-11-05): `app_da72a010-439f-4772-b664-791ed9333c29`, with the sole return URL `https://audio.hashbin.page/`. The GitHub Pages recovery copy preserves old links and drafts; Publish approval is available from the canonical site.

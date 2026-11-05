@@ -8,7 +8,7 @@ never `file://`.
 ## Important contracts
 
 - Public URL and HashBin redirect: `https://audio.hashbin.page/` (case matters). The recovery copy is
-  `https://curtcox.github.io/AudioOnline/`. The `hashbin-client-id` meta tag stays empty until Curt supplies the registered ID; never invent one.
+  `https://curtcox.github.io/AudioOnline/`. The registered public client ID is `app_da72a010-439f-4772-b664-791ed9333c29`; keep it in index.html.
 - User code never runs on the editor origin. `src/audio-sandbox.js` starts `src/audio-worker.js` with
   the pinned SDK's `createSandbox()`: a classic worker in an opaque-origin iframe
   (`sandbox="allow-scripts"`, never `allow-same-origin`). The worker removes storage APIs, nested
