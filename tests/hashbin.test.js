@@ -10,7 +10,7 @@ test('saves go through HashBin Publish with the pinned SDK and verify the return
  await assert.rejects(store.publish(payload,snapshot),/still loading/);await store.init();
  assert.equal((await store.publish(payload,snapshot)).cid,fullCID(payload));assert.deepEqual(options,{contentType:'application/json',fileName:'scene.json',clientState:{snapshot}});
  store.client.publish=async()=>({cid:fullCID(payload+' ')});await assert.rejects(store.publish(payload,snapshot),/does not match its CID/);
- await assert.rejects(new HashBinStore().init(),/registered client ID/);
+ await assert.rejects(new HashBinStore({clientId:''}).init(),/registered client ID/);
  assert.match(require('node:fs').readFileSync('vendor/fragment-kit-v0.3.3/src/hashbin/store.js','utf8'),/hashbin-sdk-v0\.4\.0/);
 });
 test('redirect saves restore source and files after approval or cancellation; legacy tokens are revoked',async()=>{
@@ -44,5 +44,5 @@ test('vendored SDK files are the exact v0.4.0 release, and the CSP pins its sand
  const csp=/Content-Security-Policy" content="([^"]+)"/.exec(html)[1],scripts=/script-src ([^;]+)/.exec(csp)[1].split(' ');
  assert.ok(scripts.includes(hash),hash);assert.ok(!scripts.includes("'unsafe-inline'")&&!scripts.includes("'unsafe-eval'"));
  assert.ok(!/<script>/.test(html),'no inline scripts in index.html');
- assert.match(html,/name="hashbin-client-id" content=""/);
+ assert.match(html,/name="hashbin-client-id" content="app_da72a010-439f-4772-b664-791ed9333c29"/);
 });

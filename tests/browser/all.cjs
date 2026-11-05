@@ -255,7 +255,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.evaluate(() => { const script = document.createElement('script'); script.src = 'https://example.invalid/injected.js'; document.head.append(script); });
     await new Promise(resolve => { const wait = () => errors.some(e => e.includes('example.invalid')) ? resolve() : setTimeout(wait, 50); wait(); });
     errors.splice(0, errors.length, ...errors.filter(e => !e.includes('example.invalid')));
-    await more(p);await p.click('#hashbin-save');await p.waitForFunction(()=>/registered client ID/.test(document.getElementById('hashbin-message').textContent));await p.click('#hashbin-dialog .fk-close');
+    await more(p);await p.click('#hashbin-save');await p.waitForFunction(()=>!document.getElementById('hashbin-confirm').disabled);await p.click('#hashbin-dialog .fk-close');
     const payload = Docs.serialize({ src: 'from audio import *\nclass SlowOld(Scene):\n    pass\n', settings: {}, files: {} }), remote = cidFor(payload);
     let release; const pending = new Promise(resolve => { release = resolve; });
     await p.route('https://256t.us/' + remote, async route => { await pending; await route.fulfill({ body: payload }); });
