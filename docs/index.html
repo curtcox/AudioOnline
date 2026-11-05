@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#5b3fd1"><title>Audio Online guide · Audio Online</title><link rel="icon" href="../icon.svg"><link rel="stylesheet" href="../src/docs.css?v=1"></head><body><header><a class="brand" href="../"><img src="../icon.svg" width="34" height="34" alt="">Audio Online</a><a href="../gallery.html">Sample gallery ↗</a></header><main>
+<!-- Generated from docs/index.md by npm run docs. -->
+<h1>Audio Online guide</h1>
+<p>Write code, render exact audio in your browser, then listen or download it. Python scenes, ABC tunes, ZzFX, sfxr and patterns use the same deterministic renderer. Start with the <a href="../gallery.html">sample gallery</a>.</p>
+<h2>Edit and listen</h2>
+<p>Use Render to hear changes, then Play to start playback. On a phone, switch between Preview and Code. More holds downloads, sharing, HashBin and saved-work recovery.</p>
+<p>The waveform supports seeking and loop selection. Track mute and solo affect preview playback. Downloads keep the full rendered mix; Stems downloads the individual tracks. Source, waveform images, WAV and supported compressed formats are available in More.</p>
+<h2>Share and recover</h2>
+<p>Share creates a link containing source, settings and attached WAV files. Run on open can be turned off. QR code shows the link and loads another code through the camera or an image upload, paste or drop. Oversized codes offer a HashBin save instead.</p>
+<p>Explicit source, example and CID links always open their document. Saved work stays separate: More → Resume saved work restores an earlier edit. Invalid links show an error. Opening a link never silently falls back to a draft.</p>
+<p>HashBin loads verify their content ID before opening a document. Publish is disabled until the owner supplies a registered public client ID. Approval and payment happen on hashbin.org; this editor keeps no HashBin credentials.</p>
+<h2>Audio files and voices</h2>
+<p>Attach WAV files through Audio files and use Sample(&quot;name.wav&quot;) in Python. Files have a 2 MiB individual limit and travel with the 5 MiB document. Sample(cid=…) accepts verified audio up to 16 MiB. Missing or invalid samples report an error.</p>
+<p>The bundled voice works with the offline app. Neural voices ask before downloading and use a separate verified cache. They are never included in Available offline. Gallery AAC previews stream only when played.</p>
+<h2>Offline and hosting</h2>
+<p>Wait for Available offline before disconnecting. More → Repair offline copy restores damaged files. Update and reload keeps the current document and installs a waiting update.</p>
+<p>The recovery site is <a href="https://curtcox.github.io/AudioOnline/">GitHub Pages</a>. The prospective audio.hashbin.page origin and HashBin client registration remain owner setup. No new canonical deployment is claimed by this migration.</p>
+<p>See the <a href="fragment-kit-migration.html">migration notes</a> and original <a href="step1-report.html">implementation report</a>.</p>
+</main></body></html>

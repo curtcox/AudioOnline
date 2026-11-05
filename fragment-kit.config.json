@@ -1,0 +1,12 @@
+{
+  "slug": "audio",
+  "name": "Audio Online",
+  "storagePrefix": "audioonline",
+  "canonicalOrigin": "https://audio.hashbin.page/",
+  "recoveryOrigin": "https://curtcox.github.io/AudioOnline/",
+  "repo": "curtcox/AudioOnline",
+  "docs": "https://curtcox.github.io/AudioOnline/docs/",
+  "gallery": "https://curtcox.github.io/AudioOnline/gallery.html",
+  "documentType": "audio",
+  "sandboxBootstrapHash": "sha256-IMEqdP+AkCKdxhM3X7mQM4pV/chykJXPvdtndD+XeH8="
+}

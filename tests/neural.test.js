@@ -37,7 +37,7 @@ test('neural catalog agrees with Python and never joins Available offline', () =
   assert.throws(() => pins.files('kokoro:unknown'), /Unknown neural voice/);
   const offline = require('../offline-assets.js');
   for (const asset of Object.values(pins.assets)) assert.ok(!offline.assets.includes(asset.url));
-  assert.match(fs.readFileSync('service-worker.js', 'utf8'), /name !== 'audioonline-voices-v1'/);
+  assert.equal(pins.CACHE,'audioonline-voices-v1');assert.match(fs.readFileSync('service-worker.js','utf8'),/extraCaches:\[self\.AudioNeuralManifest\.CACHE\]/);
   assert.ok(sandbox.FILES.includes('neural-voice.js'));
 });
 

@@ -21,7 +21,6 @@ const name = process.argv[3] || 'chromium';
       globalThis.__csp?.(e.violatedDirective + ' ' + e.blockedURI);
     }));
     page.on('pageerror', e => { if (!e.message.includes('data:text/javascript,')) errors.push(e.message); });
-    await context.route('https://cdnjs.cloudflare.com/**', r => r.fulfill({ body: fs.readFileSync('vendor/lz-string.min.js'), contentType: 'text/javascript' }));
     await context.route(core.PYODIDE_URL + '**', r => {
       const suffix = r.request().url().slice(core.PYODIDE_URL.length);
       const file = [path.join('node_modules/pyodide', suffix), path.join('.pyodide-cache', suffix)].find(file => fs.existsSync(file));

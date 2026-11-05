@@ -1,62 +1,20 @@
 name: Test Audio Online
 on:
-  push:
   pull_request:
+  workflow_call:
   workflow_dispatch:
-    inputs:
-      kokoro:
-        description: Also test the larger Kokoro model
-        type: boolean
-        default: false
 permissions:
   contents: read
 jobs:
-  unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run check
-      - run: node scripts/golden.mjs --check
-  browsers:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox, webkit]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: npm ci
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - name: URL identity and draft recovery
-        run: node tests/browser/url-state.cjs
-        env:
-          BROWSER: ${{ matrix.browser }}
-      - name: Serve repository
-        run: |
-          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/audio-http.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/ > /dev/null && break; sleep 1; done
-      - run: mkdir -p test-results && node tests/browser/all.cjs http://127.0.0.1:8000/ ${{ matrix.browser }}
-      - name: Fetch verified neural test assets
-        run: node scripts/fetch-neural.mjs ${{ github.event_name == 'workflow_dispatch' && inputs.kokoro && '--kokoro' || '' }}
-      - name: Test actual neural inference
-        env:
-          KOKORO: ${{ github.event_name == 'workflow_dispatch' && inputs.kokoro && '1' || '0' }}
-        run: node tests/browser/neural.cjs http://127.0.0.1:8000/ ${{ matrix.browser }}
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: browser-${{ matrix.browser }}
-          path: test-results/
+  test:
+    uses: curtcox/Tools-for-pages-with-state-in-URL-fragments/.github/workflows/test.yml@v2
+    with:
+      kit-path: vendor/fragment-kit-v0.3.3
+      contract-config: testing-contract.config.mjs
+      pre-test: node scripts/golden.mjs --check
+      server-command: PORT=8000 node tests/browser/server.cjs
+      browser-command: node tests/browser/url-state.cjs && node tests/browser/legacy-publish.cjs && node tests/browser/all.cjs http://127.0.0.1:8000/ "$BROWSER" && node scripts/fetch-neural.mjs && node tests/browser/neural.cjs http://127.0.0.1:8000/ "$BROWSER"
+  kit:
+    uses: curtcox/Tools-for-pages-with-state-in-URL-fragments/.github/workflows/kit-check.yml@v2
+    with:
+      kit-path: vendor/fragment-kit-v0.3.3

@@ -1,18 +1,27 @@
+import {LocalDrafts,RenderScheduler,HashBinPanel,createShell,mountMobileTabs,createShareDialog,createQrDialog} from '../vendor/fragment-kit-v0.3.3/src/index.js';
+import {config,type,urlState,HashBinDocuments,HashBinStore,LZString,fromDocument} from './fragment-config.mjs';
+Object.assign(globalThis,{HashBinDocuments,LZString});
 /* Browser glue. The renderer, documents and exports stay independent of the UI. */
 (async () => {
   'use strict';
   const $ = id => document.getElementById(id);
+  const oldHeader=document.querySelector('header'),brand=oldHeader.querySelector('.brand');oldHeader.remove();
+  const shell=createShell({config});shell.header.querySelector('.fk-brand').replaceChildren(...brand.childNodes);shell.header.querySelector('.fk-brand').href=new URL('./',location.href).href;shell.toolbar.remove();shell.status.remove();
+  shell.header.querySelector('.fk-more').id='more-toggle';$('more').remove();shell.drawer.body.prepend($('extra-tools'));
+  for(const id of ['hashbin-save','hashbin-load','hashbin-cid','hashbin-status','hashbin-dialog','qr-dialog','share-url','shorten','share-status'])$(id).remove();
+  $('extra-tools').querySelector('a').remove();document.querySelector('.toolbar').append($('share'),$('qr-open'));
+  let navigationRevision=0,qrSave=false,runSuppressed=false;
   const STORAGE_KEY = 'audioonline:document';
   const editor = ace.edit('editor');
   globalThis.editor = editor;
   editor.setTheme('ace/theme/chrome'); editor.session.setMode('ace/mode/python');
   editor.setOptions({ showPrintMargin: false, tabSize: 4, useSoftTabs: true, useWorker: false });
-  let settings = AudioCore.options(), files = {}, revision = 0, applying = false, result = null, saved = null, persistTimer;
+  let settings = AudioCore.options(), files = {}, revision = 0, applying = false, result = null, saved = null;
   const FILES = { python: ['scene.py', 'Python'], abc: ['tune.abc', 'ABC notation'], zzfx: ['sounds.zzfx', 'ZzFX'], sfxr: ['sounds.sfxr', 'sfxr'], pattern: ['beat.pattern', 'pattern mini-notation'] };
   const currentType = () => settings.renderer === 'auto' ? AudioDetector.detect(editor.getValue()).type : settings.renderer;
   const snapshot = () => ({ src: editor.getValue(), type: currentType(), settings: { ...settings }, files: { ...files } });
   const fingerprint = () => JSON.stringify(snapshot());
-  const links = () => ShareLinks.build({ url: location.href, ...snapshot(), compress: LZString.compressToEncodedURIComponent });
+  const links = () => urlState.build(snapshot(),{run:!runSuppressed});
   const currentLink = () => saved?.fingerprint === fingerprint() ? saved.link : links().fallback;
   const safeStorage = name => { try { return window[name]; } catch (_) { return undefined; } };
   const local = safeStorage('localStorage');
@@ -102,25 +111,18 @@
     } catch (_) { /* A render is in progress; the mix is applied when it finishes. */ }
   }
   function persist(edit = false) { drafts.attempt(snapshot(), edit === true); }
-  function refreshShare({ address = false } = {}) {
-    try {
-      const url = currentLink(); $('share-url').value = url;
-      if (address) history.replaceState(null, '', url);
-      refreshQr();
-    } catch (error) { $('share-status').textContent = error.message; }
-  }
   function changed() {
     if (applying) return;
-    revision++; client.cancel(); hashbin.cancelLoad(); shareClient.cancel(); saved = null; persist(true);
-    $('share-status').textContent = ''; $('cancel').hidden = true; $('status').textContent = 'Waiting for edits…';
-    clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => { persist(); refreshShare({ address: true }); }, 180);
+    revision++; client.cancel(); navigationRevision++;urlState.cancel();hashbin.cancelLoad(); saved = null; persist(true);
+    setError(''); $('cancel').hidden = true; $('status').textContent = 'Waiting for edits…';
+    urlState.write(snapshot(),{run:!runSuppressed});
     scheduler.schedule({ detect: true });
   }
   function syncOptions() { $('sample-rate').value = settings.sampleRate; $('channels').value = settings.channels; $('renderer').value = settings.renderer; }
   function apply(doc, { run = true } = {}) {
-    clearTimeout(persistTimer); drafts.opened();
+    urlState.cancel();drafts.opened();doc=fromDocument(doc);
     const nextFiles = doc.files || {}; AudioFiles.validate(nextFiles, doc.src);
+    player.stop();player.result=null;result=null;$('play').disabled=true;$('loop').disabled=true;$('empty').hidden=false;showOutput('');
     applying = true;
     // A saved type the detector would not choose is kept as an explicit renderer choice.
     const options = AudioCore.options(doc.settings);
@@ -130,13 +132,20 @@
     listFiles();
     revision++; scheduler.cancel(); client.cancel(); saved = null; showType(); if (run) render();
   }
-  const shareClient = new ShareClient();
-  const redirect = new URL('./', location.href); redirect.search = ''; redirect.hash = '';
-  const store = new HashBinStore({ clientId: document.querySelector('meta[name="hashbin-client-id"]').content.trim(),
-    redirectUri: redirect.href, storage: local, transactionStorage: safeStorage('sessionStorage') });
-  const hashbin = new HashBinPanel({ store, getSnapshot: snapshot, getFingerprint: fingerprint,
-    onLoad: (doc, cid) => { apply(doc); const link = HashBinDocuments.link(location.href, cid); saved = { fingerprint: fingerprint(), link }; history.replaceState(null, '', link); refreshShare(); },
-    onSaved: (_cid, value, link) => { saved = { fingerprint: value, link }; history.replaceState(null, '', link); refreshShare(); } });
+  const store=new HashBinStore({legacyStorage:local});
+  const hashbin=new HashBinPanel({store,urlState,container:$('extra-tools'),getSnapshot:()=>type.normalize(snapshot()),getFingerprint:fingerprint,
+    onLoad(doc,cid){navigationRevision++;apply(doc,{run:!runSuppressed});const link=cid?urlState.link(location.href,cid):links().href;saved=cid?{fingerprint:fingerprint(),link}:null;history.replaceState(null,'',link);},
+    onSaved(cid,value,link){urlState.cancel();saved={fingerprint:value,link};history.replaceState(null,'',link);if(qrSave){qrSave=false;hashbin.dialog.close();qr.open(link);}}
+  });
+  hashbin.dialog.addEventListener('close',()=>{qrSave=false;});
+  const openSave=()=>hashbin.openSave();
+  const share=createShareDialog({urlState,getSnapshot:()=>type.normalize(snapshot()),onSave:openSave});
+  const qr=createQrDialog({config,urlState,onLoad:async outcome=>{
+    if(outcome.kind==='cid'){await hashbin.load(outcome.cid);return;}
+    const url=new URL(outcome.href);history.pushState(null,'',location.pathname+url.search+url.hash);await loadUrl();
+  },onSave:()=>{qrSave=true;qr.dialog.close();return openSave();}});
+  $('share').onclick=()=>{shell.drawer.dialog.close();share.open();};
+  $('qr-open').onclick=()=>{shell.drawer.dialog.close();qr.open(currentLink());};
   editor.session.on('change', changed);
   $('render').onclick = () => { scheduler.cancel(); revision++; client.cancel(); render(); };
   $('cancel').onclick = () => { revision++; scheduler.cancel(); client.cancel(); $('cancel').hidden = true; $('status').textContent = 'Cancelled'; };
@@ -154,8 +163,9 @@
   function setSplit(value) { const width = Math.max(20, Math.min(75, value)); $('editor-pane').style.width = width + '%'; $('splitter').setAttribute('aria-valuenow', Math.round(width)); resize(); }
   $('splitter').onkeydown = event => { if (['ArrowLeft', 'ArrowRight'].includes(event.key)) { event.preventDefault(); setSplit(parseFloat($('splitter').getAttribute('aria-valuenow')) + (event.key === 'ArrowLeft' ? -2 : 2)); } };
   window.addEventListener('resize', resize);
-  for (const tab of ['preview', 'code']) $('tab-' + tab).onclick = () => { document.body.dataset.tab = tab; for (const name of ['preview', 'code']) $('tab-' + name).setAttribute('aria-selected', name === tab); resize(); if (tab === 'code') editor.focus(); };
-  $('more').onclick = () => { const open = document.body.classList.toggle('more-open'); $('more').setAttribute('aria-expanded', open); resize(); };
+  document.querySelector('.mobile-tabs').remove();
+  const tabs=mountMobileTabs({container:document.querySelector('.phone-bar'),panels:[{label:'Preview',panel:$('preview-pane')},{label:'Code',panel:$('editor-pane')}],onChange:index=>{document.body.dataset.tab=index?'code':'preview';resize();}});
+  for(const[index,button]of [...document.querySelectorAll('.fk-tabs button')].entries()){button.id=index?'tab-code':'tab-preview';$(index?'editor-pane':'preview-pane').setAttribute('aria-labelledby',button.id);}
   async function download() {
     try {
       const format = $('export-format').value, name = (result?.scene || 'scene').toLowerCase();
@@ -190,24 +200,6 @@
     const after = $('export-format').querySelector('option[value="float32"]');
     for (const name of names.reverse()) after.after(Object.assign(document.createElement('option'), { value: name, textContent: AudioEncode.FORMATS[name].label }));
   });
-  $('share').onclick = async () => { refreshShare({ address: true }); $('share-url').select(); try { await navigator.clipboard.writeText($('share-url').value); $('share-status').textContent = 'Link copied.'; } catch (_) { $('share-status').textContent = 'Select and copy the link above.'; } };
-  $('share-url').onclick = () => $('share-url').select();
-  $('shorten').onclick = async () => {
-    const ownRevision = revision; $('share-status').textContent = 'Shortening…'; refreshShare();
-    const response = await shareClient.shorten(saved ? { long: currentLink(), fallback: currentLink() } : links());
-    if (ownRevision !== revision || !response) return;
-    $('share-url').value = response.url; $('share-status').textContent = response.error?.message || 'Short link ready to copy.';
-  };
-  let qrMarkup = '';
-  function refreshQr() {
-    if (!$('qr-dialog').open) return;
-    const url = currentLink(), qr = encodeQr(url); qrMarkup = qr ? qrSvg(qr) : '';
-    $('qr-code').innerHTML = qrMarkup; $('qr-message').textContent = qrNotes(url, qr); $('qr-url').textContent = url;
-    $('qr-svg').disabled = $('qr-png').disabled = !qr;
-  }
-  $('qr-open').onclick = () => { $('qr-dialog').showModal(); refreshQr(); };
-  $('qr-svg').onclick = () => AudioExport.download(qrMarkup, 'scene-qr.svg', 'image/svg+xml');
-  $('qr-png').onclick = async () => { try { AudioExport.download(await AudioExport.png(qrMarkup, 1), 'scene-qr.png'); } catch (error) { $('qr-message').textContent = error.message; } };
   // Audio files: WAV only, checked with the same decoder the sandbox uses before they join the document.
   function listFiles() {
     $('file-count').textContent = Object.keys(files).length;
@@ -242,40 +234,35 @@
   $('editor-pane').addEventListener('dragover', event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }, true);
   $('editor-pane').addEventListener('drop', event => { if (event.dataTransfer.files.length) { event.preventDefault(); event.stopPropagation(); upload(event.dataTransfer.files); } }, true);
   document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => $(button.dataset.close).close());
-  drafts.mount($('extra-tools'), doc => { hashbin.cancelLoad(); apply(doc, { run: false }); refreshShare({ address: true }); $('status').textContent = 'Saved work restored — press Render.'; });
+  drafts.mount($('extra-tools'), doc => { navigationRevision++;hashbin.cancelLoad(); apply(doc, { run: false }); history.replaceState(null,'',links().href); $('status').textContent = 'Saved work restored — press Render.'; });
   window.addEventListener('pagehide', persist);
-  window.addEventListener('offline-before-reload', persist);
-  async function loadUrl({ initial = false } = {}) {
-    hashbin.cancelLoad();
-    try {
-      clearTimeout(persistTimer); scheduler.cancel(); client.cancel(); revision++; saved = null;
-      drafts.opened(); applying = true; editor.setValue('', -1); applying = false;
-      player.stop(); player.result = null; result = null; $('play').disabled = true; $('empty').hidden = false; $('output').textContent = '';
-      if (initial) store.retireLegacyTokens().catch(() => {});
-      const loadRevision = revision;
-      const parsed = ShareLinks.parse(location.href, LZString.decompressFromEncodedURIComponent);
-      if (parsed?.kind === 'publish') {
-        const published = await store.published(location.hash);
-        // Edits made while the return was verified win over it.
-        const current = loadRevision === revision;
-        if (published.snapshot && current) apply(published.snapshot);
-        if (published.cid && current) saved = { fingerprint: fingerprint(), link: HashBinDocuments.link(location.href, published.cid) };
-        if (saved) history.replaceState(null, '', saved.link); else refreshShare({ address: true });
-        $('hashbin-status').textContent = published.error || 'Saved to HashBin.';
-      } else if (parsed?.kind === 'source') apply(parsed);
-      else if (parsed?.kind === 'example') {
-        const sample = AudioExamples.catalog.find(item => item.id === parsed.id);
-        if (!sample) throw new Error('Unknown example. Choose a sample from the gallery.');
-        const doc = { src: sample.source, type: sample.type || 'python', files: sample.files || {} };
-        apply(doc);
-      } else if (parsed?.kind === 'cid') {
+  window.addEventListener('offline-before-reload',()=>{persist();urlState.cancel();history.replaceState(null,'',currentLink());});
+  async function loadUrl({initial=false}={}) {
+    const own=++navigationRevision;urlState.cancel();hashbin.cancelLoad();scheduler.cancel();client.cancel();revision++;saved=null;
+    try{
+      if(initial)store.retireLegacyTokens().catch(()=>{});
+      const parsed=urlState.parse(location.href);runSuppressed=parsed.run===false;setError('');
+      if(parsed.kind==='publish'){
+        const published=await store.published(location.hash);if(own!==navigationRevision)return;
+        if(published.snapshot)apply(published.snapshot,{run:!runSuppressed});
+        if(published.cid)saved={fingerprint:fingerprint(),link:urlState.link(location.href,published.cid)};
+        history.replaceState(null,'',saved?.link??links().href);hashbin.status.textContent=published.error||'Saved to HashBin.';
+      }else if(parsed.kind==='source')apply(parsed.doc,{run:!runSuppressed});
+      else if(parsed.kind==='cid'){
         await hashbin.load(parsed.cid);
-        return;
+        if(hashbin.status.textContent!=='Loaded from HashBin.')setError(hashbin.status.textContent);
+      }else{
+        const sample=parsed.kind==='example'?AudioExamples.catalog.find(item=>item.id===parsed.id):null;
+        if(parsed.kind==='example'&&!sample)throw Error('Unknown example. Choose a sample from the gallery.');
+        apply(sample?{src:sample.source,type:sample.type||'python',files:sample.files||{}}:{src:AudioExamples.defaultSource},{run:!runSuppressed});
+        if(sample)history.replaceState(null,'',links().href);
       }
-      if (!parsed) apply({ src: AudioExamples.defaultSource });
-      refreshShare();
-    } catch (error) { setError(error.message); }
+      if(runSuppressed)$('status').textContent='Ready — press Render.';
+    }catch(error){if(own===navigationRevision){setError(error.message);$('status').textContent=error.message;}}
+    finally{document.body.dataset.ready='true';}
   }
-  window.addEventListener('hashchange', () => loadUrl());
-  await loadUrl({ initial: true });
+  let lastNavigation=location.href;const navigate=event=>{if(event.type==='hashchange'&&event.newURL!==location.href)return;if(location.href===lastNavigation)return;lastNavigation=location.href;void loadUrl();};
+  window.addEventListener('hashchange',navigate);window.addEventListener('popstate',navigate);
+  globalThis.AudioOnline={editor,client,snapshot,render,selectTab:tab=>tabs.select(tab==='code'?1:0)};
+  await loadUrl({initial:true});
 })();

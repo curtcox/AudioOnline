@@ -41,7 +41,7 @@ class AudioClient {
         if (data.type === 'status') { this.onStatus(String(data.text).slice(0, 200)); return; }
         if (data.type === 'sample-request') {
           // The editor fetches and verifies CID samples; the sandbox gets only bytes that match their CID.
-          const { HashBinDocuments } = typeof module !== 'undefined' ? require('./hashbin.js') : globalThis;
+          const { HashBinDocuments } = typeof module !== 'undefined' ? require('./sample-cid.js') : globalThis;
           if (!HashBinDocuments.isCID(data.cid) || this.pending.sample) { finish(new Error('Invalid sample request.')); return; }
           this.timers.clearTimeout(this.pending.slow);
           deadline(this.startupTimeout, 'Loading the sample took too long. Check your connection and try again.');
