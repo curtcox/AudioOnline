@@ -5,7 +5,7 @@
 (() => {
 const Wav = typeof module !== 'undefined' ? require('./wav.js') : globalThis.Wav;
 const AudioFiles = typeof module !== 'undefined' ? require('./audio-files.js') : globalThis.AudioFiles;
-const { HashBinDocuments } = typeof module !== 'undefined' ? require('./hashbin.js') : globalThis;
+const { HashBinDocuments } = typeof module !== 'undefined' ? require('./sample-cid.js') : globalThis;
 
 const MISSING = 'SAMPLE_NOT_LOADED:';
 const MAX_CID_BYTES = HashBinDocuments.MAX_SAMPLE_BYTES, MAX_CIDS = 32;

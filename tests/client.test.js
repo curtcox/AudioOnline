@@ -68,6 +68,6 @@ test('the sandbox runs the worker files in order, proxying only the runtime, aud
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(options.origin, 'opaque');
   assert.deepEqual(options.proxy, ['https://cdn.jsdelivr.net/pyodide/v314.0.7/full/', 'https://audio.hashbin.page/src/py/', 'https://audio.hashbin.page/vendor/']);
-  assert.equal(await options.source, AudioSandbox.FILES.map(f => `/*${f}*/`).join('\n;\n'));
+  const source=await options.source;assert.ok(source.includes(AudioSandbox.FILES.map(f => `/*${f}*/`).join('\n;\n')));assert.match(source,/audioBootstrapQueue/);assert.match(source,/core\/cid\.js/);assert.match(source,/core\/bytes\.js/);
   worker.terminate(); delete globalThis.AudioCore;
 });

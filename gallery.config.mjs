@@ -1,0 +1,3 @@
+import {createRequire} from 'node:module';
+const {catalog}=createRequire(import.meta.url)('./src/examples.js');
+export default {catalog:catalog.map(sample=>({id:sample.id,title:sample.title,tags:sample.tags,description:sample.description,document:{src:sample.source,type:sample.type||'python',files:sample.files||{}},cover:'gallery/previews/'+sample.id+'.png'})),output:'gallery/covers',dependencies:['src/examples.js','src/fragment-config.mjs','fragment-kit.config.json','gallery/previews/manifest.json','scripts/render-gallery.mjs',...catalog.map(sample=>'gallery/previews/'+sample.id+'.png')],async renderCover(page,example){await page.goto(new URL(example.cover,process.env.GALLERY_BASE_URL??'http://127.0.0.1:8005/').href);return page.locator('img');}};

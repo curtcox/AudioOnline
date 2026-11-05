@@ -6,7 +6,7 @@ const http = require('node:http');
 const path = require('node:path');
 const base = process.argv[2] || 'http://127.0.0.1:8000/';
 const name = process.argv[3] || 'chromium';
-const { HashBinDocuments: Docs } = require('../../src/hashbin.js');
+const { HashBinDocuments: Docs } = require('../../src/fragment-config.mjs');
 const examples = require('../../src/examples.js');
 const AudioCore = require('../../src/audio-core.js');
 const golden = require('../golden.json');
@@ -23,7 +23,6 @@ function runtimeFile(url) {
 }
 async function context(options = {}) {
   const context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: true, ...options });
-  await context.route('https://cdnjs.cloudflare.com/**', route => route.fulfill({ contentType: 'application/javascript', body: fs.readFileSync('vendor/lz-string.min.js', 'utf8') }));
   await context.route(AudioCore.PYODIDE_URL + '**', route => {
     const file = runtimeFile(route.request().url());
     if (!file) return route.continue();
@@ -42,6 +41,9 @@ async function context(options = {}) {
   const page = await context.newPage(); page.on('pageerror', error => { if (!/blocked a script \(script-src-elem\) at data:text\/javascript,(?: from|$)/.test(error.message)) errors.push(error.message); });
   return { context, page };
 }
+async function more(page){if(!await page.locator('#fk-more-drawer').isVisible())await page.click('#more-toggle');}
+async function closeMore(page){if(await page.locator('#fk-more-drawer').isVisible())await page.click('#fk-more-drawer .fk-close');}
+async function shareOpen(page){await closeMore(page);await page.click('#share');}
 const renderedText = () => /^Rendered/.test(document.getElementById('status').textContent);
 async function rendered(page, timeout = 90000) { await page.waitForFunction(renderedText, null, { timeout }); }
 async function edit(page, source) {
@@ -154,12 +156,12 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       await p.waitForFunction(() => audioPlayer.position > 0.05, null, { timeout: 10000 });
       await p.click('#play'); assert.equal(await p.locator('#play').textContent(), 'Play');
     } else { console.log(`${name}: no running audio output; playhead and pause not checked`); await p.evaluate(() => audioPlayer.pause()); }
-    await p.locator('#waveform').scrollIntoViewIfNeeded();
+    await closeMore(p);await p.locator('#waveform').scrollIntoViewIfNeeded();
     const box = await p.locator('#waveform').boundingBox(); await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     assert.ok(Math.abs(await p.evaluate(() => audioPlayer.position) - 1.25) < 0.05);
     const expected = { pcm16: 44 + 120000 * 4, pcm24: 44 + 120000 * 6, float32: 44 + 120000 * 8 };
     for (const format of ['pcm16', 'pcm24', 'float32', 'svg', 'png', 'source']) {
-      await p.selectOption('#export-format', format);
+      await more(p);await p.selectOption('#export-format', format);
       const pending = p.waitForEvent('download'); await p.click('#download'); const download = await pending;
       const content = fs.readFileSync(await download.path());
       if (expected[format]) { assert.match(download.suggestedFilename(), named('hello.wav')); assert.equal(content.subarray(0, 4).toString(), 'RIFF'); assert.equal(content.length, expected[format]); }
@@ -185,12 +187,12 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.evaluate(() => { document.getElementById('status').textContent = ''; }); await p.click('#render'); await rendered(p);
     await p.waitForFunction(() => audioPlayer.result.channels[0].subarray(0, 96000).every(v => v === 0));
     await p.click('[aria-label="Solo voice"]'); await p.waitForFunction(() => document.getElementById('note').hidden);
-    await p.selectOption('#export-format', 'stems');
+    await more(p);await p.selectOption('#export-format', 'stems');
     const pending = p.waitForEvent('download'); await p.click('#download'); const download = await pending;
     assert.match(download.suggestedFilename(), named('episode-stems.zip'));
     const zip = fs.readFileSync(await download.path());
     assert.equal(zip.readUInt32LE(0), 0x04034b50); assert.match(zip.toString('latin1'), /music\.wav[\s\S]*voice\.wav/);
-    await p.locator('#waveform').scrollIntoViewIfNeeded();
+    await closeMore(p);await p.locator('#waveform').scrollIntoViewIfNeeded();
     const box = await p.locator('#waveform').boundingBox();
     await p.mouse.move(box.x + box.width * 0.25, box.y + 20); await p.mouse.down(); await p.mouse.move(box.x + box.width * 0.5, box.y + 20, { steps: 5 }); await p.mouse.up();
     const loop = await p.evaluate(() => ({ region: audioPlayer.region, looping: audioPlayer.looping, position: audioPlayer.position }));
@@ -206,7 +208,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     const formats = await p.$$eval('#export-format option', options => options.map(o => o.value).filter(v => v === 'opus' || v === 'aac'));
     console.log(`${name}: compressed formats offered: ${formats.join(', ') || 'none (WAV only)'}`);
     for (const format of formats) {
-      await p.selectOption('#export-format', format);
+      await more(p);await p.selectOption('#export-format', format);
       const pending = p.waitForEvent('download'); await p.click('#download'); const download = await pending;
       assert.match(download.suggestedFilename(), named(format === 'opus' ? 'hello.webm' : 'hello.m4a'));
       const bytes = fs.readFileSync(await download.path());
@@ -228,20 +230,20 @@ async function run(label, task) { const start = Date.now(); await task(); consol
   await run('sharing, settings, QR and shortener', async () => {
     const { context: c, page: p } = await context(); await p.goto(base); await rendered(p);
     await edit(p, 'from audio import *\nclass Shared(Scene):\n    def construct(self):\n        self.play(Sine(330).dur(0.3))\n');
-    await p.click('#share');
-    let link = await p.inputValue('#share-url'); assert.ok(new URL(link).searchParams.has('compressed'));
+    await shareOpen(p);
+    let link = await p.inputValue('#share-link'); assert.ok(new URL(link).searchParams.has('compressed'));
     const p2 = await c.newPage(); p2.on('dialog', dialog => dialog.accept()); await p2.goto(link); await rendered(p2); assert.match(await p2.evaluate(() => editor.getValue()), /class Shared/);
     await p.evaluate(() => { document.getElementById('status').textContent = ''; });
-    await p.selectOption('#sample-rate', '22050'); await rendered(p); await p.click('#share');
-    link = await p.inputValue('#share-url'); assert.ok(new URL(link).searchParams.has('doc'));
+    await p.click('#share-dialog .fk-close');await p.selectOption('#sample-rate', '22050'); await rendered(p); await shareOpen(p);
+    link = await p.inputValue('#share-link'); assert.ok(new URL(link).searchParams.has('doc'));
     await p2.goto(link); await rendered(p2); assert.equal(await p2.inputValue('#sample-rate'), '22050');
     assert.equal(await p2.evaluate(() => audioPlayer.result.sampleRate), 22050);
-    await p.click('#qr-open'); await p.waitForSelector('#qr-code svg'); assert.equal(await p.locator('#qr-url').innerText(), link); assert.match(await p.locator('#qr-message').innerText(), /computer/);
-    const download = p.waitForEvent('download'); await p.click('#qr-svg'); assert.match((await download).suggestedFilename(), named('scene-qr.svg')); await p.click('[data-close="qr-dialog"]');
+    await p.click('#share-dialog .fk-close');await p.click('#qr-open'); await p.waitForSelector('#qr-code svg'); assert.match(await p.locator('#qr-notes').innerText(), /computer/);
+    const download = p.waitForEvent('download'); await p.getByRole('button',{name:'Download SVG',exact:true}).click(); assert.match((await download).suggestedFilename(), named('audio-qr.svg')); await p.click('#qr-dialog .fk-close');
     await p.route('https://api.allorigins.win/**', route => route.fulfill({ json: { contents: 'https://is.gd/test123' } }));
-    await p.click('#shorten'); await p.waitForFunction(() => document.getElementById('share-url').value === 'https://is.gd/test123');
+    await shareOpen(p);await p.getByRole('button',{name:'Shorten link',exact:true}).click(); await p.waitForFunction(() => document.getElementById('share-link').value === 'https://is.gd/test123');
     // Settings survive the localStorage restore.
-    await p.goto(base); await rendered(p); await p.locator('#resume-work').evaluate(button=>button.click()); await p.click('#restore-work'); await p.waitForFunction(()=>!document.getElementById('draft-dialog').open); assert.equal(await p.inputValue('#sample-rate'), '22050');
+    await p.goto(base); await rendered(p); await more(p);await p.locator('#resume-work').evaluate(button=>button.click()); await p.click('#restore-work'); await p.waitForFunction(()=>!document.getElementById('draft-dialog').open); assert.equal(await p.inputValue('#sample-rate'), '22050');
     await c.close();
   });
   await run('HashBin inline CIDs, stale loads, URL identity and recovery and mocked Publish saves', async () => {
@@ -253,15 +255,11 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.evaluate(() => { const script = document.createElement('script'); script.src = 'https://example.invalid/injected.js'; document.head.append(script); });
     await new Promise(resolve => { const wait = () => errors.some(e => e.includes('example.invalid')) ? resolve() : setTimeout(wait, 50); wait(); });
     errors.splice(0, errors.length, ...errors.filter(e => !e.includes('example.invalid')));
-    const registeredClient = /name="hashbin-client-id" content="([^"]+)"/.exec(fs.readFileSync('index.html', 'utf8'))[1];
-    await p.route('https://hashbin.org/sdk/v0.4.0/hashbin.js', route => route.fulfill({ contentType: 'application/javascript', body: `export class HashBinClient {
-      constructor(options) { if (options.clientId !== ${JSON.stringify(registeredClient)} || options.redirectUri !== ${JSON.stringify(new URL('./', base).href)}) throw new Error('Incorrect HashBin registration configuration'); }
-    }` }));
-    await p.click('#hashbin-save'); await p.waitForFunction(() => document.getElementById('hashbin-confirm').textContent === 'Review on HashBin' && !document.getElementById('hashbin-confirm').disabled); assert.match(await p.locator('#hashbin-message').innerText(), /approve the save on hashbin\.org/); await p.click('#hashbin-close');
+    await more(p);await p.click('#hashbin-save');await p.waitForFunction(()=>/registered client ID/.test(document.getElementById('hashbin-message').textContent));await p.click('#hashbin-dialog .fk-close');
     const payload = Docs.serialize({ src: 'from audio import *\nclass SlowOld(Scene):\n    pass\n', settings: {}, files: {} }), remote = cidFor(payload);
     let release; const pending = new Promise(resolve => { release = resolve; });
     await p.route('https://256t.us/' + remote, async route => { await pending; await route.fulfill({ body: payload }); });
-    await p.fill('#hashbin-cid', remote); await p.click('#hashbin-load'); await edit(p, 'from audio import *\nclass NewerEdit(Scene):\n    pass\n'); release();
+    await more(p);await p.fill('#hashbin-cid', remote); await p.click('#hashbin-load');await closeMore(p); await edit(p, 'from audio import *\nclass NewerEdit(Scene):\n    pass\n'); release();
     await p.waitForTimeout(250); assert.match(await p.evaluate(() => editor.getValue()), /NewerEdit/);
     // Local drafts cannot block a program URL; previous work is recoverable.
     const previousDraft = await p.evaluate(() => localStorage.getItem('audioonline:document'));
@@ -280,23 +278,23 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       constructor(options){this.options=options}
       publish(content,{clientState}){const mode=localStorage.getItem('test:publish')||'approve';return cid(content).then(saved=>{
         if(mode==='cancel')throw new Error('access_denied');
-        if(mode==='redirect'){sessionStorage.setItem('test:state',JSON.stringify(clientState));location.href=this.options.redirectUri+'#hashbin_publish=t&cid='+saved;return {redirected:true};}
+        if(mode==='redirect'){sessionStorage.setItem('test:state',JSON.stringify(clientState));location.href=new URL('./',location.href).href+'#hashbin_publish=t&cid='+saved;return {redirected:true};}
         return {cid:saved};});}
       async handlePublishCallback({hash}){const clientState=JSON.parse(sessionStorage.getItem('test:state'));return {cid:new URLSearchParams(hash.slice(1)).get('cid'),clientState};}
       async disconnect(){localStorage.removeItem('hashbin:tokens:test-client');localStorage.setItem('test:revoked','yes');}
     }`;
-    await auth.route('https://hashbin.org/sdk/v0.4.0/hashbin.js', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
+    await auth.route('**/vendor/fragment-kit-v0.3.3/vendor/hashbin-sdk-v0.4.0.mjs', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
     await auth.addInitScript(() => {
       if (window !== window.top) return;
       // Firefox over BiDi also runs this in other documents where storage throws SecurityError.
       try { if (!sessionStorage.getItem('test:seeded')) { sessionStorage.setItem('test:seeded', '1'); localStorage.setItem('hashbin:tokens:test-client', '{"refreshToken":"old"}'); } } catch (_) { /* not this test's page */ }
     });
     await a.goto(base); await rendered(a); await a.waitForFunction(() => localStorage.getItem('test:revoked') === 'yes' && !localStorage.getItem('hashbin:tokens:test-client'));
-    const save = async () => { await a.click('#hashbin-save'); await a.waitForFunction(() => document.getElementById('hashbin-confirm').textContent === 'Review on HashBin' && !document.getElementById('hashbin-confirm').disabled); };
+    const save = async () => { await more(a);await a.click('#hashbin-save'); await a.waitForFunction(() => document.getElementById('hashbin-confirm').textContent === 'Review on HashBin' && !document.getElementById('hashbin-confirm').disabled); };
     await edit(a, 'from audio import *\nclass PopupSave(Scene):\n    pass\n'); await a.waitForTimeout(300);
-    await save(); await a.click('#hashbin-confirm'); await a.waitForFunction(() => document.getElementById('hashbin-status').textContent === 'Saved to HashBin.'); assert.ok(isCIDHash(new URL(a.url()).hash), a.url()); await a.click('#hashbin-close');
+    await save(); await a.click('#hashbin-confirm'); await a.waitForFunction(() => document.getElementById('hashbin-status').textContent === 'Saved to HashBin.'); assert.ok(isCIDHash(new URL(a.url()).hash), a.url()); await a.click('#hashbin-dialog .fk-close');
     await a.evaluate(() => localStorage.setItem('test:publish', 'cancel')); await edit(a, 'from audio import *\nclass Cancelled(Scene):\n    pass\n'); await save(); await a.click('#hashbin-confirm');
-    await a.waitForFunction(() => /cancelled on HashBin/.test(document.getElementById('hashbin-message').textContent)); await a.click('#hashbin-close');
+    await a.waitForFunction(() => /cancelled on HashBin/.test(document.getElementById('hashbin-message').textContent)); await a.click('#hashbin-dialog .fk-close');
     await a.evaluate(() => localStorage.setItem('test:publish', 'redirect')); await edit(a, 'from audio import *\nclass Restored(Scene):\n    pass\n'); await a.waitForTimeout(300); await save();
     await Promise.all([a.waitForURL('**#hashbin_publish=*'), a.click('#hashbin-confirm')]); await rendered(a);
     await a.waitForFunction(() => document.getElementById('hashbin-status').textContent === 'Saved to HashBin.'); assert.match(await a.evaluate(() => editor.getValue()), /class Restored/); assert.ok(isCIDHash(new URL(a.url()).hash));
@@ -333,8 +331,8 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.waitForSelector('#error:not([hidden])'); assert.match(await p.locator('#error').innerText(), /^Line 5: .*does not match its CID/);
     assert.equal(await pageHash(p), expected, 'last good render is kept');
     // Files travel with share links.
-    await edit(p, source); await p.click('#share');
-    const link = await p.inputValue('#share-url'), p2 = await c.newPage(); p2.on('dialog', dialog => dialog.accept());
+    await edit(p, source); await shareOpen(p);
+    const link = await p.inputValue('#share-link'), p2 = await c.newPage(); p2.on('dialog', dialog => dialog.accept());
     await p2.goto(link); await rendered(p2);
     assert.equal(await p2.locator('#file-count').textContent(), '1'); assert.equal(await pageHash(p2), expected);
     await c.close();
@@ -343,12 +341,12 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     const { context: c, page: p } = await context({ viewport: { width: 375, height: 812 } });
     await p.goto(base + 'gallery.html');
     assert.equal(await p.locator('.card').count(), examples.catalog.length);
-    assert.equal(await p.locator('#count').textContent(), `${examples.catalog.length} samples`);
+    assert.equal(await p.locator('#count').textContent(), `${examples.catalog.length} examples`);
     assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await p.waitForFunction(() => { const img = document.querySelector('.card img'); return img.complete && img.naturalWidth === 480; });
+    await p.waitForFunction(() => { const img = document.querySelector('.card img'); return img.complete && img.naturalWidth > 0; });
     for (const sample of examples.catalog) {
       const card = p.locator('#' + sample.id);
-      assert.equal(await card.locator('a.load').getAttribute('href'), './?example=' + sample.id);
+      assert.equal(new URL(await card.locator('a.load').getAttribute('href')).pathname,'/');assert.equal(require('../../src/fragment-config.mjs').urlState.parse(await card.locator('a.load').getAttribute('href')).doc.src,sample.source);
       if (sample.neural) { assert.equal(await card.locator('audio').count(), 0); assert.match(await card.locator('.neural').innerText(), /not part of “Available offline”/); continue; }
       assert.equal(await card.locator('audio').getAttribute('preload'), 'none');
       const status = await p.evaluate(async url => (await fetch(url, { method: 'HEAD' })).status, `gallery/previews/${sample.id}.m4a`);
@@ -374,27 +372,24 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await edit(p, example('two-scenes').source);
     await p.click('#tab-preview'); assert.equal(await p.locator('#waveform').isVisible(), true);
     assert.equal(await p.locator('#hashbin-save').isVisible(), false);
-    await p.click('#more'); assert.equal(await p.locator('#more').getAttribute('aria-expanded'), 'true'); assert.equal(await p.locator('#hashbin-save').isVisible(), true);
+    await more(p);assert.ok(await p.locator('#fk-more-drawer').isVisible()); assert.equal(await p.locator('#hashbin-save').isVisible(), true);
     assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    for (const selector of ['#tab-code', '#tab-preview', '#render', '#more', '#play', '#download', '#qr-open']) { const box = await p.locator(selector).boundingBox(); assert.ok(box.height >= 40, selector); }
+    for (const selector of ['#tab-code', '#tab-preview', '#render', '#more-toggle', '#play', '#download', '#qr-open']) { const box = await p.locator(selector).boundingBox(); assert.ok(box.height >= 44, selector); }
+    await closeMore(p);
     // Playwright's Firefox BiDi mode does not dispatch synthetic taps; a click is the same user gesture there.
     if (process.env.FIREFOX_PATH && name === 'firefox') await p.click('#play'); else await p.tap('#play');
     assert.equal(await p.locator('#play').textContent(), 'Pause');
     await p.screenshot({ path: `test-results/${name}-mobile.png`, fullPage: true }); await c.close();
   });
+  await run('activating an offline update synchronously preserves the latest source and settings',async()=>{
+    const{context:c,page:p}=await context();await p.goto(base+'?run=0');await p.waitForFunction(()=>document.body.dataset.ready==='true');
+    await p.evaluate(()=>{editor.setValue('from audio import *\nclass Latest(Scene):\n    pass\n',-1);document.getElementById('sample-rate').value='22050';document.getElementById('sample-rate').onchange();dispatchEvent(new Event('offline-before-reload'));});
+    const doc=require('../../src/fragment-config.mjs').urlState.parse(p.url()).doc;assert.match(doc.src,/Latest/);assert.equal(doc.audio.settings.sampleRate,22050);await c.close();
+  });
   await run('offline reload and render with the origin stopped', async () => {
     // Real origin failure avoids browser-specific offline-emulation behavior.
-    const server = http.createServer((request, response) => {
-      try {
-        const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-        const file = path.resolve(root, '.' + (pathname.endsWith('/') ? pathname + 'index.html' : pathname));
-        if (!file.startsWith(root + path.sep)) { response.writeHead(403).end(); return; }
-        const types = { '.html': 'text/html', '.js': 'application/javascript', '.mjs': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.py': 'text/plain' };
-        response.setHeader('Content-Type', types[path.extname(file)] || 'text/plain'); response.end(fs.readFileSync(file));
-      } catch (_) { response.writeHead(404).end(); }
-    });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    const offlineBase = `http://127.0.0.1:${server.address().port}/`;
+    const fixture=require('./server.cjs').createServer(),server=fixture.server;
+    const offlineBase=(await fixture.start())+'/';
     const { context: c, page: p } = await context({ serviceWorkers: 'allow' });
     try {
       await p.goto(offlineBase); await rendered(p);
@@ -402,10 +397,13 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       await p.waitForFunction(() => !!navigator.serviceWorker.controller);
       await p.reload(); await rendered(p);
       // Anything on this origin can write Cache Storage; altered entries are never served.
-      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('src/qr.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
+      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('vendor/fragment-kit-v0.3.3/src/qr/encode.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
+      assert.equal(await p.evaluate(async()=>{const{OfflineClient}=await import('./vendor/fragment-kit-v0.3.3/src/index.js');return(await new OfflineClient().status()).ready;}),false);
       await p.reload(); await rendered(p); assert.equal(await p.evaluate(() => globalThis.poisonedCache), undefined);
-      await p.waitForFunction(() => document.getElementById('offline-status').textContent === 'Offline setup incomplete', null, { timeout: 45000 });
-      await p.click('#offline-action'); await p.waitForFunction(() => document.getElementById('offline-status').textContent === 'Available offline', null, { timeout: 120000 });
+      // The shared core refetches and verifies a damaged requested module. An
+      // unused damaged document exercises explicit repair through the app UI.
+      await p.evaluate(async()=>{const name=(await caches.keys()).find(name=>name.startsWith('audioonline-'));await(await caches.open(name)).put(new URL('docs/index.html',location.href),new Response('tampered'));});
+      await more(p);await p.click('#offline-repair');await closeMore(p); await p.waitForFunction(() => document.getElementById('offline-status').textContent === 'Available offline', null, { timeout: 120000 });
       await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
       await assert.rejects(fetch(offlineBase));
       await c.route(AudioCore.PYODIDE_URL + '**', route => route.abort());

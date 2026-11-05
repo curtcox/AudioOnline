@@ -1,0 +1,253 @@
+{
+  "repo": "AudioOnline",
+  "slug": "audio",
+  "commit": "a018402ab75810b06f9a78a32a4d3d0e19e7f3c5",
+  "example": {
+    "id": "hello",
+    "source": "from audio import *\n\nclass Hello(Scene):\n    \"\"\"Four chime notes over a soft noise bed, then a low thump.\"\"\"\n\n    def construct(self):\n        bed = Noise(color=\"pink\").lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)\n        self.add(bed, at=0, track=\"ambience\")\n        for i, freq in enumerate([523.25, 659.25, 783.99, 1046.5]):\n            note = Sine(freq).env(adsr(0.005, 0.3, 0.2, 0.6)).dur(1.2).gain(-9)\n            self.add(note, at=0.25 * i, track=\"chime\", pan=-0.6 + 0.4 * i)\n        self.wait(1.5)\n        thump = (Sine(55).env(adsr(0.002, 0.15, 0, 0.2)).dur(0.4)\n                 + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))\n        self.add(thump, track=\"sfx\", gain=-3)\n",
+    "raw": "{\"format\":\"hashbin-audio\",\"version\":1,\"src\":\"from audio import *\\n\\nclass Hello(Scene):\\n    \\\"\\\"\\\"Four chime notes over a soft noise bed, then a low thump.\\\"\\\"\\\"\\n\\n    def construct(self):\\n        bed = Noise(color=\\\"pink\\\").lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)\\n        self.add(bed, at=0, track=\\\"ambience\\\")\\n        for i, freq in enumerate([523.25, 659.25, 783.99, 1046.5]):\\n            note = Sine(freq).env(adsr(0.005, 0.3, 0.2, 0.6)).dur(1.2).gain(-9)\\n            self.add(note, at=0.25 * i, track=\\\"chime\\\", pan=-0.6 + 0.4 * i)\\n        self.wait(1.5)\\n        thump = (Sine(55).env(adsr(0.002, 0.15, 0, 0.2)).dur(0.4)\\n                 + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))\\n        self.add(thump, track=\\\"sfx\\\", gain=-3)\\n\",\"type\":\"python\",\"settings\":{\"sampleRate\":22050,\"channels\":1,\"scene\":\"\",\"renderer\":\"auto\"},\"files\":{}}",
+    "expected": {
+      "src": "from audio import *\n\nclass Hello(Scene):\n    \"\"\"Four chime notes over a soft noise bed, then a low thump.\"\"\"\n\n    def construct(self):\n        bed = Noise(color=\"pink\").lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)\n        self.add(bed, at=0, track=\"ambience\")\n        for i, freq in enumerate([523.25, 659.25, 783.99, 1046.5]):\n            note = Sine(freq).env(adsr(0.005, 0.3, 0.2, 0.6)).dur(1.2).gain(-9)\n            self.add(note, at=0.25 * i, track=\"chime\", pan=-0.6 + 0.4 * i)\n        self.wait(1.5)\n        thump = (Sine(55).env(adsr(0.002, 0.15, 0, 0.2)).dur(0.4)\n                 + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))\n        self.add(thump, track=\"sfx\", gain=-3)\n",
+      "type": "python",
+      "files": {},
+      "settings": {
+        "sampleRate": 22050,
+        "channels": 1,
+        "scene": "",
+        "renderer": "auto"
+      }
+    }
+  },
+  "sourceFiles": {
+    "README.md": "ec62b9cccdcc446e2356142eddfc63f73f18678b3c2060e555838529bfaa6c0f",
+    "docs/neural-voices-notes.md": "128f441c9ac7fd15b30c688715ac565f8669dcc232649ee89ba6fe6b6455e8da",
+    "docs/step1-report.md": "f2c7c5b0e5d5441d63269cabd441f570f756235cbc6e7018041dd56c5a7e5acc",
+    "index.html": "e4c809cd460852d1f61983e2463dceaf931915be710ee693a54e92185cb1ef22",
+    "offline-assets.js": "01695194ca4f3e192d66eb7648329beaacd384bced41985e8ed32d2680da2915",
+    "service-worker.js": "e219ce491e2518a34b6c8564270c8b42753dd677a2e1299f7460898a78d8cbc6",
+    "src/app.js": "9c4da587d1a3bb684acaa656770aa84e60100800edcbada57bc6e5d8c16e61d1",
+    "src/audio-client.js": "486749516614944e3045ac20011b78c8064a3047d402e9c3130f97be9993662f",
+    "src/audio-core.js": "78405ddcf22d2da54ea489a90189ae745e853e9b04f58bf2b2cc2070bc4caca0",
+    "src/audio-files.js": "969cab1729c886b778915ecbdc9f19e32440e5fb4c3c9eb726454661f78fc88f",
+    "src/audio-python.js": "d9c3735af01c506f66728ebb1ae709988543edf8ddc99bea408742219ce5a1f7",
+    "src/audio-renderer.js": "cbb99432f23c361fd9e27d6eccbf8f5f48fb9579a323e590975637741ed8249a",
+    "src/audio-sandbox.js": "2cd6aadfcc744a2d215736e71ebfeed9f3549a591f92244527571226679e2311",
+    "src/audio-worker.js": "faa545b02a66a50ab1d5d5c880710b4878a17abd2846f9f45ff8216fa2be3ea8",
+    "src/detector.js": "476aa2b6b07c457749014ae0198cfb456ce08c9902543137bfc1dc839313f4ac",
+    "src/dmath.js": "820a43c571e6c2566b99670b53d9d4ee8b7c950688a07ce8cf01dc6f9e85cba8",
+    "src/domain-migration.js": "220464e56996e52965418130af0ce95b5a49a54a44241d76b07888a21e6b5cda",
+    "src/effects.js": "2090adf31283d1797d3af64e9100a06e360411520e23bb7861c77698c052b927",
+    "src/encode.js": "6015d15b6f9a3257c3d2dd8fa8ecf14db9f41d683d0f9ab52782675cecc6277d",
+    "src/examples.js": "6d2d26ec59e1bd9986c1125f7381ad8a61ebdd48e602bd96762a6f81c9224944",
+    "src/export.js": "57e6dc6bbb240640f7b614679c39b66e5151b3852e14611c6b116874c94c8cbd",
+    "src/g2p.js": "f381fd9ee985a67bc847954a468c9f21b7c3716ad3a0a65f5a4410569033692b",
+    "src/gallery.js": "7a5954cb97a10402e9110bfa1fb40d3e1220466fdc0ad46e1b2a2cac36df20f2",
+    "src/hashbin-panel.js": "f94903a085185ad30f9617a73b3382856b1f58555bf0c0b0a4ba9056598932fc",
+    "src/hashbin.js": "4ed22b62a4f36d3e26204e5a0713b82690f9178a3287d7be9f6bc931ed7f8df9",
+    "src/instruments.js": "879cf8b37db5fd78c91498a8b9947661a4339a6ee1256c7e873b1ba42541cdd4",
+    "src/local-drafts.js": "63b3e2ab8ad18a3088ff40386bb64e3a2d133ae32fbc7968a662b9069023cb85",
+    "src/lz-fallback.js": "e6725fa9172ff859cd5b24e5d74ac516046bf7957b3ee71a99a61e7b5d0c7f58",
+    "src/mini-notation.js": "51c6dd0d07f00286b313179c9f4d8b93a5f54ff53be16d937e71b306e4e1aa4a",
+    "src/neural-manifest.js": "99e92fbd01b5e07d63b0425ccad2ce7ef3e62664af56d030fed16eb200667da2",
+    "src/neural-voice.js": "63a6bbc3706339da6d504d09efefbb6d38d175687f952b387f1defc841a9532a",
+    "src/notation.js": "869b423a8575642de76e629524aa567a4eb7ea4e7c65a6e586639532344dbd89",
+    "src/offline.js": "208bf7c711b8937db5a84c34cb11908bfd994ea201657aae1f7a35ddcb48eaac",
+    "src/player.js": "cd9ddd4aa8c551e3c10d5d76fa0d556ffafdeddad26a8fa4d2b06ab5374c88b3",
+    "src/qr.js": "a6821da15236196ed734bc65c81ad0ddc03ef363e3b61dd7f550335114961921",
+    "src/render-scheduler.js": "2ca91d13be1f761a79427318a6096cfb55f6b15954d67047704e12c824e253a1",
+    "src/samples.js": "54338121a12ba72f2746e7662d558a123535e6e87ced5eeaadbb510e3a0957aa",
+    "src/share-links.js": "e23339f5c2d2dbf732fcac47c8e013d4a3b495fab908a8720b9074f7bf174c25",
+    "src/spectrogram.js": "f23efabf3490debeed90848ee40f19ab8a257354bdd73159da1bcb6294ab71a8",
+    "src/voice-assets.js": "16282c9dc4828bde8cd68253af699fd10ce228d1e79c9fe1535bccd79d85f26c",
+    "src/voice.js": "e75529cd4d0e3834897de3d0ea82653c065d242d8c0953ea84d3af49ca79131a",
+    "src/wav.js": "ad9c43fe481c85ababe278369e520623600d2d4e3202672b0cd8c8a79245f987",
+    "src/zip.js": "4ed5177dee7b2c794d32191cb7f9094be7c2257217981e1abba60065cb8966a6",
+    "tests/browser/all.cjs": "e2650d26966a1d5724fe48e379c36533be4776effc6a2c4e2d3b7c378025af15",
+    "tests/browser/neural.cjs": "42be6bde239fef2baf750a40f477f3c9789eb794671c78ecd98500aa62223fc1",
+    "tests/browser/url-state.cjs": "6e306824152057bbec13ed6d6e121a367fc0a222d85444bc399aa9f79bd29122",
+    "tests/client.test.js": "25de196af196efcce44e612748b71fb5d15b4d14a397f1af48ba80cf663b0a18",
+    "tests/documents.test.js": "1ad1afed947cefa01f964dae72735f43fa4e480cf0eeb9fa79fce9aea62bca0f",
+    "tests/drafts.test.js": "d2acc84e28686018a2edda76f28e0167f219dfa031478b2472ed04b0c6e7e74f",
+    "tests/effects.test.js": "19e10aafb2778b7bdbc253c2348b8fedbcb3a8d38304cca62d22955f37af751e",
+    "tests/encode.test.js": "170e5d4d99e18fc366e4100135fb5487558f05ced42b3f74e7712fbfb3124359",
+    "tests/golden.json": "9742da7def17b9a80876b87ab09df905dadaa162fd56893eff3fa51df0a00954",
+    "tests/hashbin.test.js": "8476f1dbc00afaa783ba4b70a493196cc70ba3fd9112852a94033c5b6886da1d",
+    "tests/neural.test.js": "91ce9184fa2198c70e761da60ed9298c2720eaf100044d591547c56d26faaf87",
+    "tests/notation.test.js": "701bd3bdf1f5e75ea764c2ddc89f006a45b715f8a29db5febe489957a25a2918",
+    "tests/offline.test.js": "66a60ebe6916513fc5618726789ff11c07a160c6a8b1eb794eb29d1b0773a888",
+    "tests/preview.test.js": "a40d7517ca421322cca0fbbcf685633487e629b22cf1ac8d0fc12c9ad9b549a1",
+    "tests/python.test.js": "918579106afe7ff981d516d4a7b8450a43974a2084ce4176d961b8e37d396e52",
+    "tests/renderer.test.js": "29b9902d3ce994aab02ad8a7b691b547514fc2e3f4cf8aa1743a42e98d445f7a",
+    "tests/samples.test.js": "b2a1d5a5ace8c7a38218863dde4f926f60d74ebdccec93052dc65573527087a3",
+    "tests/voice.test.js": "f248d23e3d3c30497dce582b5ceac17c3c22bdd4283e9d8f64777e3ca1d7629b",
+    "tests/wav.test.js": "b7d92fd72ff2c566cee7d590879b8e95e35289d0ea5b4cecfc50ecf3f1994c13"
+  },
+  "storage": [
+    {
+      "file": "src/domain-migration.js",
+      "key": "pythononline:persistent-home"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "audio-isolation-probe"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "audio-isolation-probe"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "audioonline:document"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "audioonline:document"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:publish"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:state"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:state"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "hashbin:tokens:test-client"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:revoked"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:seeded"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:seeded"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "hashbin:tokens:test-client"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:revoked"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "hashbin:tokens:test-client"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:publish"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:publish"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "key": "test:publish"
+    },
+    {
+      "file": "tests/drafts.test.js",
+      "key": "work"
+    },
+    {
+      "file": "tests/drafts.test.js",
+      "key": "work"
+    },
+    {
+      "file": "tests/drafts.test.js",
+      "key": "work"
+    },
+    {
+      "file": "tests/drafts.test.js",
+      "key": "work"
+    }
+  ],
+  "caches": [
+    {
+      "file": "src/neural-manifest.js",
+      "expression": "audioonline-voices-v1"
+    }
+  ],
+  "references": [
+    {
+      "file": "README.md",
+      "href": "https://audio.hashbin.page/gallery.html)"
+    },
+    {
+      "file": "src/domain-migration.js",
+      "href": "https://hashbin.org/docs/textpad/app"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "href": "?example=drum-pattern"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "href": "?example=podcast-ducking"
+    },
+    {
+      "file": "tests/browser/all.cjs",
+      "href": "?example=numpy-glide"
+    },
+    {
+      "file": "tests/documents.test.js",
+      "href": "https://audio.hashbin.page/?example=hello"
+    },
+    {
+      "file": "tests/documents.test.js",
+      "href": "https://audio.hashbin.page/?compressed=bad"
+    },
+    {
+      "file": "tests/documents.test.js",
+      "href": "https://audio.hashbin.page/?doc=1&compressed=2&keep=3"
+    }
+  ],
+  "cases": [
+    {
+      "label": "source fragment",
+      "href": "https://curtcox.github.io/AudioOnline/#from%20audio%20import%20*%0A%0Aclass%20Hello(Scene)%3A%0A%20%20%20%20%22%22%22Four%20chime%20notes%20over%20a%20soft%20noise%20bed%2C%20then%20a%20low%20thump.%22%22%22%0A%0A%20%20%20%20def%20construct(self)%3A%0A%20%20%20%20%20%20%20%20bed%20%3D%20Noise(color%3D%22pink%22).lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)%0A%20%20%20%20%20%20%20%20self.add(bed%2C%20at%3D0%2C%20track%3D%22ambience%22)%0A%20%20%20%20%20%20%20%20for%20i%2C%20freq%20in%20enumerate(%5B523.25%2C%20659.25%2C%20783.99%2C%201046.5%5D)%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20note%20%3D%20Sine(freq).env(adsr(0.005%2C%200.3%2C%200.2%2C%200.6)).dur(1.2).gain(-9)%0A%20%20%20%20%20%20%20%20%20%20%20%20self.add(note%2C%20at%3D0.25%20*%20i%2C%20track%3D%22chime%22%2C%20pan%3D-0.6%20%2B%200.4%20*%20i)%0A%20%20%20%20%20%20%20%20self.wait(1.5)%0A%20%20%20%20%20%20%20%20thump%20%3D%20(Sine(55).env(adsr(0.002%2C%200.15%2C%200%2C%200.2)).dur(0.4)%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%2B%20Noise(seed%3D1).lowpass(600).env(adsr(0.001%2C%200.05%2C%200%2C%200.05)).dur(0.12))%0A%20%20%20%20%20%20%20%20self.add(thump%2C%20track%3D%22sfx%22%2C%20gain%3D-3)%0A",
+      "kind": "source",
+      "src": "from audio import *\n\nclass Hello(Scene):\n    \"\"\"Four chime notes over a soft noise bed, then a low thump.\"\"\"\n\n    def construct(self):\n        bed = Noise(color=\"pink\").lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)\n        self.add(bed, at=0, track=\"ambience\")\n        for i, freq in enumerate([523.25, 659.25, 783.99, 1046.5]):\n            note = Sine(freq).env(adsr(0.005, 0.3, 0.2, 0.6)).dur(1.2).gain(-9)\n            self.add(note, at=0.25 * i, track=\"chime\", pan=-0.6 + 0.4 * i)\n        self.wait(1.5)\n        thump = (Sine(55).env(adsr(0.002, 0.15, 0, 0.2)).dur(0.4)\n                 + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))\n        self.add(thump, track=\"sfx\", gain=-3)\n"
+    },
+    {
+      "label": "compressed query",
+      "href": "https://curtcox.github.io/AudioOnline/?compressed=GYJw9gtgBAhgrgEwJZikiAHMIAuUBUAUIQMYA2MAzpVABICmZZYAFAMon0B29AlAFyEowqACJxAMTBwQUEgAt09KFzA56NMADd6smFEphgeVUkrKARvQQAaKDnndYUZgHd78uJgB040cREoBHpgOTAuShwQOBIcFnMyYAEhQJErBCgAXigAOTAzehYSMGYQTNEMJC4Aa1FebzcMKkoWAE4ABnb6gHMYKpYAWgAmABZ6hBkWIe8AVnrgGGCAfX722fnF+iXpOLWADl4U1INGYG9FhBZ0uxgcTPa7KJgSavKYCAskbk46o9TgbBoOygegARzQXCg3C8uluhQA2jMhgBmbxDGZ2ABsM1aaIxUAA7HtUa1WnYAIztEaY2YAXWSx2OqnUWSgbCqhRBoPq3C0LEWlBALDWnXxa2RdjWQ0l3kxvHGk3JaJ6fS4g1ah0ZqQSZwuLGZ9BudylMwIQPsIGer1ECiUojsTS4mQGa0xUAA1FA1iMzUhNYydd5XH04kq5n9Ag4vBhWewOSwZnNvLz+QhBcLvJ1pV7vOSxTKhvLvBMhd7-VrGZ68gV4vRrJlyfVGs0WJjOjyuHyBaXM+1yTL2vmc4OiyWM+TC+XtadzghLlHMI9LS9ypRgAAPe1QXpVZ3Iw5AA",
+      "kind": "source",
+      "src": "from audio import *\n\nclass Hello(Scene):\n    \"\"\"Four chime notes over a soft noise bed, then a low thump.\"\"\"\n\n    def construct(self):\n        bed = Noise(color=\"pink\").lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)\n        self.add(bed, at=0, track=\"ambience\")\n        for i, freq in enumerate([523.25, 659.25, 783.99, 1046.5]):\n            note = Sine(freq).env(adsr(0.005, 0.3, 0.2, 0.6)).dur(1.2).gain(-9)\n            self.add(note, at=0.25 * i, track=\"chime\", pan=-0.6 + 0.4 * i)\n        self.wait(1.5)\n        thump = (Sine(55).env(adsr(0.002, 0.15, 0, 0.2)).dur(0.4)\n                 + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))\n        self.add(thump, track=\"sfx\", gain=-3)\n"
+    },
+    {
+      "label": "document query",
+      "href": "https://curtcox.github.io/AudioOnline/?doc=N4IgZg9gTgtghgFxALhACzgZzQIwJYB2AtHAK4AmeEIANCAG4CmUmVBKAjHZlAMYrgoEGAAIylCCLwwADtAQiAVAB0Cq3gBssmEQAlGGjRAAUAZV6MCjAJTJVIhyOUhnzgGIRSUEbzTTGIgQQCIw6EEzecCKYEGAKQXiYATiM5DQiCGiWYiJGAO4ZaKSyAHSuLi5qBI4i5IxgPhAEmAhQpLwIxkkaYLb2NY4p5CIAvCIAchCJjMa8EEZQI84yhADWztYl+TLaxgCcAAwHmwDmcITGRABMACyb5F7GVyUArJtgcHUA+hcHr++fRhfTydP4ADms-QG0QMYBKn3IxiG6UQIwO6VacF4qyWIDgMHwlgsGyhA0g3jw6TAUEYAEcpNVLMVmIgZgBtF5XADMJSuL3SADYXntefyRAB2ME8vZ7dIcA43AWvAC6fWq0IGQRCoxEpkIM2pdM2lnoxk+PGMfyOYr+XPSfyu9pKAus90eHF5p3OBEue0h6o1jm6cIRxi1jBRCDRoqUUgxUCxOOcvn8znSOwIIyIfwFIgA1CI-jdY3h-YHgyU8udOh63qSaplijIdWZ9cYXm8SiazeQLVaDo7CyUODanVdXSUHlBLSU7vXAzUC5Npl1GKkRhxNttdgKjsaCKbzdP+1whwdR2e3m7j8Px2WNRXQ43ZPHE7jMGAAB5pkRnQhZrl-VoEAEAATxkRgBBkUDMiaYCkgQBBCBOTAUFATB8RkDRGAAJVZFAriuc90RAXw4AIKwNFQ5AuBATALCsARgJpAg6hpKABDIBBqAAXzoMA8Gw6jgB4nigA",
+      "kind": "source",
+      "raw": "{\"format\":\"hashbin-audio\",\"version\":1,\"src\":\"from audio import *\\n\\nclass Hello(Scene):\\n    \\\"\\\"\\\"Four chime notes over a soft noise bed, then a low thump.\\\"\\\"\\\"\\n\\n    def construct(self):\\n        bed = Noise(color=\\\"pink\\\").lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)\\n        self.add(bed, at=0, track=\\\"ambience\\\")\\n        for i, freq in enumerate([523.25, 659.25, 783.99, 1046.5]):\\n            note = Sine(freq).env(adsr(0.005, 0.3, 0.2, 0.6)).dur(1.2).gain(-9)\\n            self.add(note, at=0.25 * i, track=\\\"chime\\\", pan=-0.6 + 0.4 * i)\\n        self.wait(1.5)\\n        thump = (Sine(55).env(adsr(0.002, 0.15, 0, 0.2)).dur(0.4)\\n                 + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))\\n        self.add(thump, track=\\\"sfx\\\", gain=-3)\\n\",\"type\":\"python\",\"settings\":{\"sampleRate\":22050,\"channels\":1,\"scene\":\"\",\"renderer\":\"auto\"},\"files\":{}}"
+    },
+    {
+      "label": "document fragment",
+      "href": "https://curtcox.github.io/AudioOnline/#%7B%22format%22%3A%22hashbin-audio%22%2C%22version%22%3A1%2C%22src%22%3A%22from%20audio%20import%20*%5Cn%5Cnclass%20Hello(Scene)%3A%5Cn%20%20%20%20%5C%22%5C%22%5C%22Four%20chime%20notes%20over%20a%20soft%20noise%20bed%2C%20then%20a%20low%20thump.%5C%22%5C%22%5C%22%5Cn%5Cn%20%20%20%20def%20construct(self)%3A%5Cn%20%20%20%20%20%20%20%20bed%20%3D%20Noise(color%3D%5C%22pink%5C%22).lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)%5Cn%20%20%20%20%20%20%20%20self.add(bed%2C%20at%3D0%2C%20track%3D%5C%22ambience%5C%22)%5Cn%20%20%20%20%20%20%20%20for%20i%2C%20freq%20in%20enumerate(%5B523.25%2C%20659.25%2C%20783.99%2C%201046.5%5D)%3A%5Cn%20%20%20%20%20%20%20%20%20%20%20%20note%20%3D%20Sine(freq).env(adsr(0.005%2C%200.3%2C%200.2%2C%200.6)).dur(1.2).gain(-9)%5Cn%20%20%20%20%20%20%20%20%20%20%20%20self.add(note%2C%20at%3D0.25%20*%20i%2C%20track%3D%5C%22chime%5C%22%2C%20pan%3D-0.6%20%2B%200.4%20*%20i)%5Cn%20%20%20%20%20%20%20%20self.wait(1.5)%5Cn%20%20%20%20%20%20%20%20thump%20%3D%20(Sine(55).env(adsr(0.002%2C%200.15%2C%200%2C%200.2)).dur(0.4)%5Cn%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%2B%20Noise(seed%3D1).lowpass(600).env(adsr(0.001%2C%200.05%2C%200%2C%200.05)).dur(0.12))%5Cn%20%20%20%20%20%20%20%20self.add(thump%2C%20track%3D%5C%22sfx%5C%22%2C%20gain%3D-3)%5Cn%22%2C%22type%22%3A%22python%22%2C%22settings%22%3A%7B%22sampleRate%22%3A22050%2C%22channels%22%3A1%2C%22scene%22%3A%22%22%2C%22renderer%22%3A%22auto%22%7D%2C%22files%22%3A%7B%7D%7D",
+      "kind": "source",
+      "raw": "{\"format\":\"hashbin-audio\",\"version\":1,\"src\":\"from audio import *\\n\\nclass Hello(Scene):\\n    \\\"\\\"\\\"Four chime notes over a soft noise bed, then a low thump.\\\"\\\"\\\"\\n\\n    def construct(self):\\n        bed = Noise(color=\\\"pink\\\").lowpass(900).gain(-24).dur(2.5).fade_in(0.5).fade_out(0.8)\\n        self.add(bed, at=0, track=\\\"ambience\\\")\\n        for i, freq in enumerate([523.25, 659.25, 783.99, 1046.5]):\\n            note = Sine(freq).env(adsr(0.005, 0.3, 0.2, 0.6)).dur(1.2).gain(-9)\\n            self.add(note, at=0.25 * i, track=\\\"chime\\\", pan=-0.6 + 0.4 * i)\\n        self.wait(1.5)\\n        thump = (Sine(55).env(adsr(0.002, 0.15, 0, 0.2)).dur(0.4)\\n                 + Noise(seed=1).lowpass(600).env(adsr(0.001, 0.05, 0, 0.05)).dur(0.12))\\n        self.add(thump, track=\\\"sfx\\\", gain=-3)\\n\",\"type\":\"python\",\"settings\":{\"sampleRate\":22050,\"channels\":1,\"scene\":\"\",\"renderer\":\"auto\"},\"files\":{}}"
+    },
+    {
+      "label": "example",
+      "href": "https://curtcox.github.io/AudioOnline/?example=hello",
+      "kind": "example",
+      "id": "hello"
+    },
+    {
+      "label": "CID",
+      "href": "https://curtcox.github.io/AudioOnline/#AAAAAALRMvz2hikWMBO6G6JNnhax-H0SmhZDuYpDH6I4JFDG4pgDqFLEcU-s-Qec3rg6j-80Dhq4LAGXNZ-jurw5F5HHCw",
+      "kind": "cid",
+      "cid": "AAAAAALRMvz2hikWMBO6G6JNnhax-H0SmhZDuYpDH6I4JFDG4pgDqFLEcU-s-Qec3rg6j-80Dhq4LAGXNZ-jurw5F5HHCw"
+    }
+  ]
+}

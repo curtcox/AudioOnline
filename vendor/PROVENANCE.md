@@ -42,3 +42,7 @@ vendored or included in the offline manifest. The editor downloads them only aft
 model adapters live in `src/g2p.js` and `src/neural-voice.js`. No wrapper or GPL phonemizer is used.
 Kitten's two random operators receive explicit seed attributes in memory, after integrity checking;
 the original downloaded file is cached unchanged. Inference sessions restart per utterance.
+
+## Fragment Kit v0.3.3
+
+Shared SDK, compression, QR encoder/decoder and their licenses now live in the independently verified published `fragment-kit-v0.3.3` pin. Duplicate top-level SDK/cache/lz-string files have been removed. Original notation, Pico and neural vendor bytes and notices remain unchanged. See `fragment-kit-v0.3.3/vendor/PROVENANCE.md` and its integrity manifest.

@@ -1,8 +1,8 @@
 /* Scenes run with an opaque origin, separate from the editor's storage and service worker. */
 (() => {
 const AudioSandbox = {
-  FILES: ['audio-core.js', 'audio-files.js', 'wav.js', 'hashbin.js', 'samples.js', 'dmath.js', 'instruments.js', 'mini-notation.js', 'notation.js', 'voice.js', 'neural-manifest.js', 'g2p.js', 'neural-voice.js', 'effects.js', 'audio-renderer.js', 'audio-python.js', 'audio-worker.js'],
-  factory({ loadSDK = () => import('../vendor/hashbin-sdk-v0.4.0.mjs'),
+  FILES: ['audio-core.js', 'audio-files.js', 'wav.js', 'sample-cid.js', 'samples.js', 'dmath.js', 'instruments.js', 'mini-notation.js', 'notation.js', 'voice.js', 'neural-manifest.js', 'g2p.js', 'neural-voice.js', 'effects.js', 'audio-renderer.js', 'audio-python.js', 'audio-worker.js'],
+  factory({ loadSDK = () => import('../vendor/fragment-kit-v0.3.3/vendor/hashbin-sdk-v0.4.0.mjs?execution'),
     base = new URL('src/', location.href).href,
     pyodide = globalThis.AudioCore.PYODIDE_URL,
     voiceAssets = null,
@@ -17,7 +17,31 @@ const AudioSandbox = {
         terminate() { this.closed = true; this.queue.length = 0; this.sandbox?.terminate(); } };
       Promise.resolve().then(loadSDK).then(sdk => {
         if (worker.closed) return;
-        const source = Promise.all(this.FILES.map(file => fetchSource(new URL(file, base).href))).then(parts => parts.join('\n;\n'));
+        const source = Promise.all(this.FILES.map(file => fetchSource(new URL(file, base).href))).then(parts => `(async()=>{
+const audioBootstrapQueue=[];
+const audioBootstrapHold=event=>{audioBootstrapQueue.push(event.data);event.stopImmediatePropagation();};
+self.addEventListener('message',audioBootstrapHold);
+try{
+ // The SDK imports a single fetched module. Bind the kit CID module's one relative
+ // dependency to a local Blob; the pinned files themselves remain untouched.
+ const [cidResponse,bytesResponse]=await Promise.all([fetch(${JSON.stringify(new URL('../vendor/fragment-kit-v0.3.3/src/core/cid.js',base).href)}),fetch(${JSON.stringify(new URL('../vendor/fragment-kit-v0.3.3/src/core/bytes.js',base).href)})]);
+ if(!cidResponse.ok||!bytesResponse.ok)throw Error('Could not load the sample CID helpers.');
+ const bytesModule=URL.createObjectURL(new Blob([await bytesResponse.text()],{type:'text/javascript'}));
+ const cidSource=await cidResponse.text();
+ if(!cidSource.includes("from './bytes.js'"))throw Error('Unsupported sample CID dependency.');
+ const cidModule=URL.createObjectURL(new Blob([cidSource.replace("from './bytes.js'",'from '+JSON.stringify(bytesModule))],{type:'text/javascript'}));
+ let cid,bytes;try{[cid,bytes]=await Promise.all([import(cidModule),import(bytesModule)]);}finally{URL.revokeObjectURL(cidModule);URL.revokeObjectURL(bytesModule);}
+ globalThis.FragmentKitSampleCid={...cid,decode64:bytes.decode64};
+ ${parts.join('\n;\n')}
+ delete globalThis.FragmentKitSampleCid;
+ self.removeEventListener('message',audioBootstrapHold);
+ for(const data of audioBootstrapQueue)self.onmessage({data});
+}catch(error){
+ self.removeEventListener('message',audioBootstrapHold);
+ self.onmessage=({data})=>self.postMessage({id:data.id,error:{message:String(error.message||error),line:null,traceback:''},output:''});
+ for(const data of audioBootstrapQueue)self.onmessage({data});
+}
+})();`);
         // The SDK awaits source after its frame loads; handle an earlier fetch rejection too.
         source.catch(() => {});
         const pins = typeof module !== 'undefined' ? require('./neural-manifest.js') : globalThis.AudioNeuralManifest;

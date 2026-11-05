@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const Wav = require('../src/wav.js');
 const AudioSamples = require('../src/samples.js');
-const { HashBinStore, HashBinDocuments } = require('../src/hashbin.js');
+const { HashBinStore, HashBinDocuments } = require('../src/fragment-config.mjs');
 const { render } = require('../scripts/node-python.cjs');
 
 const scene = body => `from audio import *\n\nclass S(Scene):\n    def construct(self):\n${body.split('\n').map(line => '        ' + line).join('\n')}\n`;

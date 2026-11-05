@@ -1,0 +1,92 @@
+{
+  "dependencies": {
+    "src/examples.js": "6d2d26ec59e1bd9986c1125f7381ad8a61ebdd48e602bd96762a6f81c9224944",
+    "src/fragment-config.mjs": "5392872db28c3979328ab5299194f53cc364522cf25fb9baee08f2788c632b0e",
+    "fragment-kit.config.json": "890ce03435bab007b5cfeea50485dac369feab9d55281b31ed0c3272b58c0cce",
+    "gallery/previews/manifest.json": "70beb25ad69a923bfaed85932f4eead2ac95af2b454e818597d16d55c494e714",
+    "scripts/render-gallery.mjs": "e889d185799074dc66fbf9be2b981058bee6b0d4a89cc9c08f1581b7397dd330",
+    "gallery/previews/hello.png": "98ebd86b1b9f82048d12cf021581cbe25c9f3260faf4ac33552b7ac06d1d174c",
+    "gallery/previews/narrated-intro.png": "537bf70ca90d8e530e65ef69b39d6fc910e1cd580b121405e9d34ad661fa737b",
+    "gallery/previews/podcast-ducking.png": "d06b12c3b47c51bf75eca359278dd0ef82dd0637135e57209ce0d9477ad8f397",
+    "gallery/previews/explosion.png": "e3124e47e2d50173a7fe567d0e3171d4e8ac761a0b15cc4ee4e042690cacd52e",
+    "gallery/previews/numpy-glide.png": "bb936ef11d6462aace57cdd3cb574e05b469bf67e3fb6824c764a1ebe5f35234",
+    "gallery/previews/two-scenes.png": "2f3a716fafbcc3d1d276836a40d9f0aa7abe592b4930a9960eef0fd170df0d6a",
+    "gallery/previews/abc-tune.png": "8ede0c5391af56ff695a1aedb4a4ef57b91367af4270fb244ffc1744f362065e",
+    "gallery/previews/drum-pattern.png": "d964d80b4686fc42492665999b2c751b76132054effa1c1e755c8dd6e87cfce5",
+    "gallery/previews/ui-sounds.png": "598f60b00467bf330fa04b00abc683e02f509261bdea137a4b3e0ab6a2e75f3d",
+    "gallery/previews/sfxr-pack.png": "2bc5b9e1aa0d77dff6beed3a831d6304e0318cbfc5e2beacfcc7d2356d6ff030",
+    "gallery/previews/notation-mix.png": "d2fdab83c284e10f60d229d6ae213ede17e91a52c38739fe8b5407c859c1d512",
+    "gallery/previews/door.png": "9ce8e5d7430b69161edf714256db9d09639a849795f957021aaa256e467c64c5",
+    "gallery/previews/haunted-hallway.png": "061e895112d7ed4f567ca0c19f72bbea7197109cf263277634ce674a13b70acb",
+    "gallery/previews/cid-wavetable.png": "97d4f02b438e266c82a824627a9c9b9b838f814259d9ea7b6a0e3bfdae5792ea",
+    "gallery/previews/uploaded-loop.png": "1eb2f176e5f2f63cbd53df1bdb9fc505294f84a43531163cb72fc6796cf45e32",
+    "gallery/previews/neural-narrator.png": "67c71bda71875d44af722b54a6839bb3134e9e24df2b05ebc13d2fdd027135c8"
+  },
+  "renderer": "8bfafe4283d8bc97e5e91d8a59387f109090c30a9c6fc37f473d115d944b5c74",
+  "examples": {
+    "hello": {
+      "document": "1ceb5138ac746f1f1c23ed526b9561ab153c4249a90fe3eb65f43384fc61675f",
+      "cover": "f3bf0a98f40c26e8c40f5aa1cc754a28b6ecd42ee2ad1429960f7c0cf328dbda"
+    },
+    "narrated-intro": {
+      "document": "a14fb670c71c4d30a0604107de1029d86ad25b29cae89e51a00022bf7bd48f19",
+      "cover": "9a47159c6cb949a5efa68f0bfcc442b258dcf682e10efe47697cea3dc63700bd"
+    },
+    "podcast-ducking": {
+      "document": "cc4f1564043dc579c3a8fc9c502e680f5d5045c776df056ac8ea7fbc8051b58b",
+      "cover": "d2d1ae583f7dfdf9bad68b51f638cc3f915c2e25b2dde09437a0ecd56f589282"
+    },
+    "explosion": {
+      "document": "9c97dbcd5bf23a1b5d129fb12fe77caac0b0cace2c03f1bb708d3b561f98fe95",
+      "cover": "2c3091282fa14b7b8d561544bba570a356268d688449f4344af4caa2e04ed3f7"
+    },
+    "numpy-glide": {
+      "document": "aea899280fbbb69f6893f3fc4e6c78cf098a05f28f8b0dc3a8beee2be721827d",
+      "cover": "8a3483be41b872907f27aa1e41413959d1e08c2a1ed90eac29d10552c9573508"
+    },
+    "two-scenes": {
+      "document": "0c78c3a9fa74374500a91f0100f89cf42b7c9f001a80dd892daa37f663415f6c",
+      "cover": "006e2cbcfd98b169871c2129328a31fecc6d268d5919539de2fee4765cbf69c6"
+    },
+    "abc-tune": {
+      "document": "948ecbeff7828757152a273ad2afb0b18ce5827a0e17a7de730722a26ce9853e",
+      "cover": "464694e32f2e2c20eba5f4dc80cf6e18d3a58d953466bfdd2232681313087e81"
+    },
+    "drum-pattern": {
+      "document": "8f6007757ad20b80f45f8a181c2af8a990e5c6a2075fd18a382667dba749eb71",
+      "cover": "5d73013f0660315bab7249963eb51a2b9a71a0661af2fb604a535574eb5048ab"
+    },
+    "ui-sounds": {
+      "document": "479df821dfc72bdf3034bbb68759252d3860c0f482e827390a93037a69d6ddc2",
+      "cover": "b6239277d266d3a2eb9bf9104d90fe3cc77817ee37ca050f09f4d7f74803a6ce"
+    },
+    "sfxr-pack": {
+      "document": "76ff00742c1ffd9d8ac30f454462a291e0be6016891f58576ade971890792be8",
+      "cover": "dab3166879e8911914610996391db22a10bf104013d852c2efa52971867a3d4c"
+    },
+    "notation-mix": {
+      "document": "f93765b72fd31d289e69e2ba987ca8b4e274168318ee95b7c9c025211c6aff01",
+      "cover": "bdbd3042ba5ab7254e854f096e606b036653bb32e5ff897c344501cc36db61ee"
+    },
+    "door": {
+      "document": "fcf9d5daa86a5293a12987352cd0b873b54d77fac1e06149f723d94018565639",
+      "cover": "ab253dc056d2e03438f4fd4c22b25f24a94d63d35d059edbe59739c388b60240"
+    },
+    "haunted-hallway": {
+      "document": "6bcfb95e7f211e51e72e809a9ce313211de22ccbdfe21b6418243ed1b3596747",
+      "cover": "b07b49da8bcc9a8b24232a7d6220ae47b62e50c958abd25e2859f657f4c2c65a"
+    },
+    "cid-wavetable": {
+      "document": "6c1e61433945a149264896a108a869554a4b7f1130ff36a1355e68f555896604",
+      "cover": "eed20eea8a2fd98283e5e9b6a02703369cd0ef91e2b7531b93052c3b15237769"
+    },
+    "uploaded-loop": {
+      "document": "10c5b292e56244ea7f15c2d27f3de6673ffec74f048918652eb6498cd9ece4f3",
+      "cover": "eadede251bbdbe053b4a97ac06f090ba838f7839d8d9e67bcdafee6e7f612e1e"
+    },
+    "neural-narrator": {
+      "document": "498b416e70160ccd164d90d711051ae196b9981517667e31d79975a9fe51767a",
+      "cover": "c2573a098b38e0458a465cedc8665d458e59c127e916560abc1a9d22db5351a2"
+    }
+  }
+}

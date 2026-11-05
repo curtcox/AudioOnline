@@ -175,3 +175,11 @@ MIT licensed; see [LICENSE](LICENSE).
 ### URLs and saved work
 
 Program URLs always open the linked document, regardless of browser history or local drafts. The homepage opens the default example. Use **Resume saved work** in the editor controls to recover local drafts. Viewing or running a link keeps saved work; editing it retains the previous draft for recovery.
+
+## Shared tools migration
+
+The shell, URL/CID tools, Publish dialogs, QR image/camera loading, draft recovery, offline core and gallery filters use the published Fragment Kit v0.3.3 pin. See [the guide](docs/index.md) and [migration notes](docs/fragment-kit-migration.md). The audio engine and golden hashes remain unchanged. New document writers keep the existing hashbin-audio envelope while the fleet's shared readers roll out.
+
+Publish is visibly disabled until a registered public client ID is supplied. Canonical hosting and remote deployment remain explicit owner actions; this migration stages a gated manual Pages workflow. Neural voices retain their separate verified cache and consent flow.
+
+Run `npm test`, `npm run check`, `npm run golden -- --check`, `npm run test:contracts` and the actual engine browser suite. `npm run gallery:audio` regenerates the original PNG/AAC previews with real Chromium AAC support; `npm run gallery` renders the shared covers from those PNGs. Run `npm run docs` and `npm run offline` after shipped-file changes. Node 22.12+ is required.

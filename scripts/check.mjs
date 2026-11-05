@@ -11,3 +11,8 @@ if (py.error) console.warn('python3 not found; skipped audio.py syntax check (un
 run('scripts/update-offline.mjs', '--check');
 // Gallery covers and previews must match the current examples and renderer (fingerprints only; nothing renders).
 run('scripts/render-gallery.mjs', '--check');
+
+run('vendor/fragment-kit-v0.3.3/tools/check.mjs');
+run('vendor/fragment-kit-v0.3.3/tools/vendor-sync.mjs','--check','--target','.');
+run('scripts/render-docs.mjs','--check');
+run('scripts/render-kit-gallery.mjs','--check');

@@ -2,15 +2,13 @@
 
 This is a buildless, static GitHub Pages application. It turns code into audio: Python scenes now;
 notations, voices and effects follow the plan in [docs/step1-report.md](docs/step1-report.md)
-(decisions D1–D7 signed off in §10). Use plain JavaScript with browser globals and CommonJS exports for
-shared modules. Do not add a production bundler or server. Serve the repository root over HTTP,
+(decisions D1–D7 signed off in §10). Use native ES modules for shared UI and document adapters. App-owned classic worker files retain browser globals and CommonJS exports. Do not add a production bundler or server. Serve the repository root over HTTP,
 never `file://`.
 
 ## Important contracts
 
 - Public URL and HashBin redirect: `https://audio.hashbin.page/` (case matters). The recovery copy is
-  `https://curtcox.github.io/AudioOnline/`. The `hashbin-client-id` meta tag holds a **placeholder**
-  (`app_00000000-…`) until Curt supplies the registered ID; never invent one.
+  `https://curtcox.github.io/AudioOnline/`. The `hashbin-client-id` meta tag stays empty until Curt supplies the registered ID; never invent one.
 - User code never runs on the editor origin. `src/audio-sandbox.js` starts `src/audio-worker.js` with
   the pinned SDK's `createSandbox()`: a classic worker in an opaque-origin iframe
   (`sandbox="allow-scripts"`, never `allow-same-origin`). The worker removes storage APIs, nested
@@ -71,7 +69,7 @@ never `file://`.
   Keep scripts out of HTML: the Content-Security-Policy allows only the pinned SDK sandbox bootstrap
   hash as inline script. Vendored SDK files stay byte-identical to the release (`tests/hashbin.test.js`
   checks their SRI hashes).
-- The service worker serves only hash-verified bytes (`vendor/hashbin-cache-v0.4.0.js`); installation
+- The service worker serves only hash-verified bytes (Fragment Kit's shared verified service worker); installation
   is atomic. Run `node scripts/update-offline.mjs` after any shipped-file change. Neural voices (later)
   are never part of "Available offline" and use their own on-demand verified cache.
 - A source/example/CID URL loads independently of browser drafts; retain saved work for explicit
