@@ -1,4 +1,4 @@
-import { OfflineClient } from '../vendor/fragment-kit-v0.3.3/src/index.js';
+import { OfflineClient } from '../vendor/fragment-kit-v0.3.5/src/index.js';
 const status = document.getElementById('offline-status'), action = document.getElementById('offline-action');
 const repair = document.createElement('button'); repair.id = 'offline-repair'; repair.textContent = 'Repair offline copy'; document.getElementById('extra-tools')?.append(repair);
 let updating = false;

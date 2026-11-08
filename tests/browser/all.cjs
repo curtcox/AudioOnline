@@ -44,6 +44,7 @@ async function context(options = {}) {
 async function more(page){if(!await page.locator('#fk-more-drawer').isVisible())await page.click('#more-toggle');}
 async function closeMore(page){if(await page.locator('#fk-more-drawer').isVisible())await page.click('#fk-more-drawer .fk-close');}
 async function shareOpen(page){await closeMore(page);await page.click('#share');}
+async function setting(page,selector,value){await more(page);await page.selectOption(selector,value);await closeMore(page);}
 const renderedText = () => /^Rendered/.test(document.getElementById('status').textContent);
 async function rendered(page, timeout = 90000) { await page.waitForFunction(renderedText, null, { timeout }); }
 async function edit(page, source) {
@@ -79,7 +80,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       const scenes = await p.$$eval('#scene option', options => options.map(o => o.value));
       for (const scene of scenes.slice(1)) {
         await p.evaluate(() => { document.getElementById('status').textContent = ''; });
-        await p.selectOption('#scene', scene); await rendered(p);
+        await setting(p,'#scene', scene); await rendered(p);
         assert.equal(await pageHash(p), golden[`${sample.id}:${scene}`].hash, `${sample.id}:${scene}`);
       }
     }
@@ -100,10 +101,10 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     await p.evaluate(() => editor.setValue('bpm 120\nkick: bd [sn', -1));
     await p.waitForSelector('#error:not([hidden])'); assert.match(await p.locator('#error').innerText(), /^Line 2: Pattern: Expected "\]"/);
     await p.evaluate(() => { document.getElementById('status').textContent = ''; });
-    await p.selectOption('#renderer', 'python'); await p.waitForSelector('#error:not([hidden])');
+    await setting(p,'#renderer', 'python'); await p.waitForSelector('#error:not([hidden])');
     await p.waitForFunction(() => /SyntaxError/.test(document.getElementById('error').textContent));
     assert.equal(await p.locator('#filename').textContent(), 'scene.py');
-    await p.selectOption('#renderer', 'auto'); await edit(p, 'bpm 120\nkick: bd sn');
+    await setting(p,'#renderer', 'auto'); await edit(p, 'bpm 120\nkick: bd sn');
     assert.equal(await p.locator('#filename').textContent(), 'beat.pattern');
     await c.close();
   });
@@ -234,7 +235,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     let link = await p.inputValue('#share-link'); assert.ok(new URL(link).searchParams.has('compressed'));
     const p2 = await c.newPage(); p2.on('dialog', dialog => dialog.accept()); await p2.goto(link); await rendered(p2); assert.match(await p2.evaluate(() => editor.getValue()), /class Shared/);
     await p.evaluate(() => { document.getElementById('status').textContent = ''; });
-    await p.click('#share-dialog .fk-close');await p.selectOption('#sample-rate', '22050'); await rendered(p); await shareOpen(p);
+    await p.click('#share-dialog .fk-close');await setting(p,'#sample-rate', '22050'); await rendered(p); await shareOpen(p);
     link = await p.inputValue('#share-link'); assert.ok(new URL(link).searchParams.has('doc'));
     await p2.goto(link); await rendered(p2); assert.equal(await p2.inputValue('#sample-rate'), '22050');
     assert.equal(await p2.evaluate(() => audioPlayer.result.sampleRate), 22050);
@@ -283,7 +284,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       async handlePublishCallback({hash}){const clientState=JSON.parse(sessionStorage.getItem('test:state'));return {cid:new URLSearchParams(hash.slice(1)).get('cid'),clientState};}
       async disconnect(){localStorage.removeItem('hashbin:tokens:test-client');localStorage.setItem('test:revoked','yes');}
     }`;
-    await auth.route('**/vendor/fragment-kit-v0.3.3/vendor/hashbin-sdk-v0.4.0.mjs', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
+    await auth.route('**/vendor/fragment-kit-v0.3.5/vendor/hashbin-sdk-v0.4.0.mjs', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
     await auth.addInitScript(() => {
       if (window !== window.top) return;
       // Firefox over BiDi also runs this in other documents where storage throws SecurityError.
@@ -314,7 +315,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     let fetches = 0;
     await c.route('https://256t.us/**', route => { fetches++; return route.fulfill({ body: wav, contentType: 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' } }); });
     await p.goto(base); await rendered(p);
-    await p.click('#files-open');
+    await more(p);await p.click('#files-open');
     await p.setInputFiles('#file-upload', { name: 'notes.wav', mimeType: 'audio/wav', buffer: Buffer.from('not audio') });
     await p.waitForFunction(() => /notes\.wav: Not a WAV file/.test(document.getElementById('files-message').textContent));
     await p.setInputFiles('#file-upload', { name: 'tone.wav', mimeType: 'audio/wav', buffer: wav });
@@ -397,8 +398,8 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       await p.waitForFunction(() => !!navigator.serviceWorker.controller);
       await p.reload(); await rendered(p);
       // Anything on this origin can write Cache Storage; altered entries are never served.
-      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('vendor/fragment-kit-v0.3.3/src/qr/encode.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
-      assert.equal(await p.evaluate(async()=>{const{OfflineClient}=await import('./vendor/fragment-kit-v0.3.3/src/index.js');return(await new OfflineClient().status()).ready;}),false);
+      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('vendor/fragment-kit-v0.3.5/src/qr/encode.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
+      assert.equal(await p.evaluate(async()=>{const{OfflineClient}=await import('./vendor/fragment-kit-v0.3.5/src/index.js');return(await new OfflineClient().status()).ready;}),false);
       await p.reload(); await rendered(p); assert.equal(await p.evaluate(() => globalThis.poisonedCache), undefined);
       // The shared core refetches and verifies a damaged requested module. An
       // unused damaged document exercises explicit repair through the app UI.

@@ -15,7 +15,7 @@ test('the offline manifest covers HTML resources, sandbox files, audio.py and th
     assert.ok(assets.includes(url), `index.html: ${url}`);
   }
   for (const file of AudioSandbox.FILES) assert.ok(assets.includes('src/' + file), file);
-  for (const name of ['src/py/audio.py', 'vendor/fragment-kit-v0.3.3/vendor/hashbin-sdk-v0.4.0.mjs', 'vendor/fragment-kit-v0.3.3/src/offline/sw-core.js', 'vendor/fragment-kit-v0.3.3/vendor/lz-string-1.5.0.js', 'service-worker.js']) assert.ok(assets.includes(name), name);
+  for (const name of ['src/py/audio.py', 'vendor/fragment-kit-v0.3.5/vendor/hashbin-sdk-v0.4.0.mjs', 'vendor/fragment-kit-v0.3.5/src/offline/sw-core.js', 'vendor/fragment-kit-v0.3.5/vendor/lz-string-1.5.0.js', 'service-worker.js']) assert.ok(assets.includes(name), name);
   for (const file of ['pyodide.mjs', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json', AudioCore.NUMPY_WHEEL]) assert.ok(assets.includes(AudioCore.PYODIDE_URL + file), file);
   for (const asset of assets.filter(x => !x.startsWith('https:'))) {
     assert.ok(fs.existsSync(asset), asset);

@@ -185,3 +185,10 @@ Publish is visibly disabled until a registered public client ID is supplied. Can
 Run `npm test`, `npm run check`, `npm run golden -- --check`, `npm run test:contracts` and the actual engine browser suite. `npm run gallery:audio` regenerates the original PNG/AAC previews with real Chromium AAC support; `npm run gallery` renders the shared covers from those PNGs. Run `npm run docs` and `npm run offline` after shipped-file changes. Node 22.12+ is required.
 
 Canonical registration (2026-11-05): `app_da72a010-439f-4772-b664-791ed9333c29`, with the sole return URL `https://audio.hashbin.page/`. The GitHub Pages recovery copy preserves old links and drafts; Publish approval is available from the canonical site.
+
+## Compact interface
+
+This app uses released Fragment Kit v0.3.5 for compact controls, readable dialogs,
+and individual-pane or split workspace views. On phones, primary feedback stays
+visible while status details are available in More.
+Current deployment evidence is recorded in the [shared rollout status](https://github.com/curtcox/Tools-for-pages-with-state-in-URL-fragments/blob/main/todo/rollout-status.md).

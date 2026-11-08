@@ -1,10 +1,10 @@
 {
   "dependencies": {
     "src/examples.js": "6d2d26ec59e1bd9986c1125f7381ad8a61ebdd48e602bd96762a6f81c9224944",
-    "src/fragment-config.mjs": "5392872db28c3979328ab5299194f53cc364522cf25fb9baee08f2788c632b0e",
+    "src/fragment-config.mjs": "54229cd6ace88b99f41d47e10fa6abe09bbede930358c65d786422c6124a2fa1",
     "fragment-kit.config.json": "890ce03435bab007b5cfeea50485dac369feab9d55281b31ed0c3272b58c0cce",
-    "gallery/previews/manifest.json": "70beb25ad69a923bfaed85932f4eead2ac95af2b454e818597d16d55c494e714",
-    "scripts/render-gallery.mjs": "e889d185799074dc66fbf9be2b981058bee6b0d4a89cc9c08f1581b7397dd330",
+    "gallery/previews/manifest.json": "cfb53cd92139befc5a6184435cf8d262cd9403f0e2eea2afecadf68d6ff4595b",
+    "scripts/render-gallery.mjs": "9030304748f31d140e30609199162fd2ec97c0f02920f8c86142024f0b265b35",
     "gallery/previews/hello.png": "98ebd86b1b9f82048d12cf021581cbe25c9f3260faf4ac33552b7ac06d1d174c",
     "gallery/previews/narrated-intro.png": "537bf70ca90d8e530e65ef69b39d6fc910e1cd580b121405e9d34ad661fa737b",
     "gallery/previews/podcast-ducking.png": "d06b12c3b47c51bf75eca359278dd0ef82dd0637135e57209ce0d9477ad8f397",

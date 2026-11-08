@@ -68,8 +68,8 @@
     "vendor/zzfx",
     "vendor/jsfxr",
     "vendor/svoxpico",
-    "vendor/fragment-kit-v0.3.3/src",
-    "vendor/fragment-kit-v0.3.3/vendor",
+    "vendor/fragment-kit-v0.3.5/src",
+    "vendor/fragment-kit-v0.3.5/vendor",
     "vendor/LICENSE-lz-string",
     "vendor/PROVENANCE.md",
     "vendor/neural"

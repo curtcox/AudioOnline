@@ -2,7 +2,7 @@
 (() => {
 const AudioSandbox = {
   FILES: ['audio-core.js', 'audio-files.js', 'wav.js', 'sample-cid.js', 'samples.js', 'dmath.js', 'instruments.js', 'mini-notation.js', 'notation.js', 'voice.js', 'neural-manifest.js', 'g2p.js', 'neural-voice.js', 'effects.js', 'audio-renderer.js', 'audio-python.js', 'audio-worker.js'],
-  factory({ loadSDK = () => import('../vendor/fragment-kit-v0.3.3/vendor/hashbin-sdk-v0.4.0.mjs?execution'),
+  factory({ loadSDK = () => import('../vendor/fragment-kit-v0.3.5/vendor/hashbin-sdk-v0.4.0.mjs?execution'),
     base = new URL('src/', location.href).href,
     pyodide = globalThis.AudioCore.PYODIDE_URL,
     voiceAssets = null,
@@ -24,7 +24,7 @@ self.addEventListener('message',audioBootstrapHold);
 try{
  // The SDK imports a single fetched module. Bind the kit CID module's one relative
  // dependency to a local Blob; the pinned files themselves remain untouched.
- const [cidResponse,bytesResponse]=await Promise.all([fetch(${JSON.stringify(new URL('../vendor/fragment-kit-v0.3.3/src/core/cid.js',base).href)}),fetch(${JSON.stringify(new URL('../vendor/fragment-kit-v0.3.3/src/core/bytes.js',base).href)})]);
+ const [cidResponse,bytesResponse]=await Promise.all([fetch(${JSON.stringify(new URL('../vendor/fragment-kit-v0.3.5/src/core/cid.js',base).href)}),fetch(${JSON.stringify(new URL('../vendor/fragment-kit-v0.3.5/src/core/bytes.js',base).href)})]);
  if(!cidResponse.ok||!bytesResponse.ok)throw Error('Could not load the sample CID helpers.');
  const bytesModule=URL.createObjectURL(new Blob([await bytesResponse.text()],{type:'text/javascript'}));
  const cidSource=await cidResponse.text();

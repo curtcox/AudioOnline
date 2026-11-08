@@ -1,3 +1,3 @@
 importScripts('offline-assets.js','src/neural-manifest.js');
 self.FragmentKitOfflineConfig={extraCaches:[self.AudioNeuralManifest.CACHE]};
-importScripts('vendor/fragment-kit-v0.3.3/src/offline/sw-core.js');
+importScripts('vendor/fragment-kit-v0.3.5/src/offline/sw-core.js');
