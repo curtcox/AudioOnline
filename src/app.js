@@ -231,7 +231,7 @@ compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),sta
       AudioFiles.validate(next, editor.getValue()); files = next; changed(); listFiles(); $('files-message').textContent = '';
     } catch (error) { $('files-message').textContent = error.message; if (!$('files-dialog').open) $('files-dialog').showModal(); }
   }
-  $('files-open').onclick = () => { listFiles(); $('files-message').textContent = ''; $('files-dialog').showModal(); };
+  $('files-open').onclick = () => { shell.drawer.dialog.close();listFiles(); $('files-message').textContent = ''; $('files-dialog').showModal(); };
   $('file-add').onclick = () => $('file-upload').click();
   $('file-upload').onchange = async event => { await upload(event.target.files); event.target.value = ''; };
   $('editor-pane').addEventListener('dragover', event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }, true);
