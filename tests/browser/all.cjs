@@ -283,7 +283,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       async handlePublishCallback({hash}){const clientState=JSON.parse(sessionStorage.getItem('test:state'));return {cid:new URLSearchParams(hash.slice(1)).get('cid'),clientState};}
       async disconnect(){localStorage.removeItem('hashbin:tokens:test-client');localStorage.setItem('test:revoked','yes');}
     }`;
-    await auth.route('**/vendor/fragment-kit-v0.3.3/vendor/hashbin-sdk-v0.4.0.mjs', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
+    await auth.route('**/vendor/fragment-kit-v0.3.5/vendor/hashbin-sdk-v0.4.0.mjs', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
     await auth.addInitScript(() => {
       if (window !== window.top) return;
       // Firefox over BiDi also runs this in other documents where storage throws SecurityError.
@@ -397,8 +397,8 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       await p.waitForFunction(() => !!navigator.serviceWorker.controller);
       await p.reload(); await rendered(p);
       // Anything on this origin can write Cache Storage; altered entries are never served.
-      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('vendor/fragment-kit-v0.3.3/src/qr/encode.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
-      assert.equal(await p.evaluate(async()=>{const{OfflineClient}=await import('./vendor/fragment-kit-v0.3.3/src/index.js');return(await new OfflineClient().status()).ready;}),false);
+      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('vendor/fragment-kit-v0.3.5/src/qr/encode.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
+      assert.equal(await p.evaluate(async()=>{const{OfflineClient}=await import('./vendor/fragment-kit-v0.3.5/src/index.js');return(await new OfflineClient().status()).ready;}),false);
       await p.reload(); await rendered(p); assert.equal(await p.evaluate(() => globalThis.poisonedCache), undefined);
       // The shared core refetches and verifies a damaged requested module. An
       // unused damaged document exercises explicit repair through the app UI.

@@ -16,3 +16,5 @@ body{height:var(--fk-viewport-height,100dvh);background:var(--fk-surface);color:
  dialog:not(.fk-dialog){max-width:none;width:100%;height:100%;max-height:var(--fk-viewport-height,100dvh);margin:0;border-radius:0;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
 }
 @media(prefers-color-scheme:dark){:root{--accent:#b2a0ff;--fk-accent:#b2a0ff}header,.toolbar,#editor-pane,#preview-pane,.pane-heading,dialog,.draft-recovery{background:var(--fk-surface);color:var(--fk-text)}#preview{background:var(--fk-surface)}button,select,input,textarea{background:var(--fk-surface);color:var(--fk-text)}#error{background:#392121;color:#ffb8ad}.pane-heading .filename,#output,.lane-name{color:var(--fk-text)}}
+
+.fk-compact .phone-bar{width:auto;flex-wrap:wrap}.fk-compact .fk-toolbar{gap:6px}

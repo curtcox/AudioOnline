@@ -1,4 +1,4 @@
-import {mountGallery} from '../vendor/fragment-kit-v0.3.3/src/index.js';
+import {mountGallery} from '../vendor/fragment-kit-v0.3.5/src/index.js';
 import {urlState} from './fragment-config.mjs';
 const samples=AudioExamples.catalog;
 const container=document.getElementById('gallery');

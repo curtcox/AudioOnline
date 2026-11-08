@@ -19,7 +19,7 @@ const PREVIEW_SECONDS = 12, WIDTH = 480, HEIGHT = 270, WAVE = 96;
 
 // Anything that can change the rendered audio or the way assets are drawn.
 const RUNTIME = ['src/py/audio.py', 'src/audio-python.js', 'src/audio-renderer.js', 'src/dmath.js', 'src/effects.js', 'src/instruments.js',
-  'src/sample-cid.js', 'vendor/fragment-kit-v0.3.3/src/core/cid.js', 'vendor/fragment-kit-v0.3.3/src/core/bytes.js', 'src/notation.js', 'src/mini-notation.js', 'src/voice.js', 'src/samples.js', 'src/wav.js', 'src/audio-core.js', 'src/spectrogram.js',
+  'src/sample-cid.js', 'vendor/fragment-kit-v0.3.5/src/core/cid.js', 'vendor/fragment-kit-v0.3.5/src/core/bytes.js', 'src/notation.js', 'src/mini-notation.js', 'src/voice.js', 'src/samples.js', 'src/wav.js', 'src/audio-core.js', 'src/spectrogram.js',
   'src/encode.js', 'scripts/node-python.cjs', 'scripts/render-gallery.mjs', 'package-lock.json'];
 const VENDOR = ['vendor/abcjs', 'vendor/zzfx', 'vendor/jsfxr', 'vendor/svoxpico'];
 const files = dir => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(path.join(dir, e.name)) : [path.join(dir, e.name)]).sort();

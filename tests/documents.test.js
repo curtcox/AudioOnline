@@ -4,7 +4,7 @@ const { createHash } = require('node:crypto');
 const { HashBinDocuments: Docs } = require('../src/fragment-config.mjs');
 const { ShareLinks, ShareClient } = require('../src/fragment-config.mjs');
 const AudioFiles = require('../src/audio-files.js');
-const { encodeQr, qrNotes } = require('../vendor/fragment-kit-v0.3.3/src/index.js');
+const { encodeQr, qrNotes } = require('../vendor/fragment-kit-v0.3.5/src/index.js');
 const lz = { compress: text => 'z' + Buffer.from(text).toString('base64url'), decompress: text => text[0] === 'z' ? Buffer.from(text.slice(1), 'base64url').toString() : null };
 const wav = 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
 

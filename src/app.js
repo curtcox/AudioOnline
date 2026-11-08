@@ -1,4 +1,4 @@
-import {LocalDrafts,RenderScheduler,HashBinPanel,createShell,mountMobileTabs,createShareDialog,createQrDialog} from '../vendor/fragment-kit-v0.3.3/src/index.js';
+import {LocalDrafts,RenderScheduler,HashBinPanel,compactShell,createShell,mountMobileTabs,createShareDialog,createQrDialog} from '../vendor/fragment-kit-v0.3.5/src/index.js';
 import {config,type,urlState,HashBinDocuments,HashBinStore,LZString,fromDocument} from './fragment-config.mjs';
 Object.assign(globalThis,{HashBinDocuments,LZString});
 /* Browser glue. The renderer, documents and exports stay independent of the UI. */
@@ -7,9 +7,11 @@ Object.assign(globalThis,{HashBinDocuments,LZString});
   const $ = id => document.getElementById(id);
   const oldHeader=document.querySelector('header'),brand=oldHeader.querySelector('.brand');oldHeader.remove();
   const shell=createShell({config});shell.header.querySelector('.fk-brand').replaceChildren(...brand.childNodes);shell.header.querySelector('.fk-brand').href=new URL('./',location.href).href;shell.toolbar.remove();shell.status.remove();
+compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),status:document.querySelector("body > footer")});
   shell.header.querySelector('.fk-more').id='more-toggle';$('more').remove();shell.drawer.body.prepend($('extra-tools'));
   for(const id of ['hashbin-save','hashbin-load','hashbin-cid','hashbin-status','hashbin-dialog','qr-dialog','share-url','shorten','share-status'])$(id).remove();
-  $('extra-tools').querySelector('a').remove();document.querySelector('.toolbar').append($('share'),$('qr-open'));
+  $('extra-tools').querySelector('a').remove();$('qr-open').textContent='QR';document.querySelector('.toolbar').append($('share'),$('qr-open'));
+  for(const control of document.querySelectorAll('.toolbar > label, .toolbar > #files-open'))shell.drawer.body.append(control);
   let navigationRevision=0,qrSave=false,runSuppressed=false;
   const STORAGE_KEY = 'audioonline:document';
   const editor = ace.edit('editor');
@@ -152,8 +154,8 @@ Object.assign(globalThis,{HashBinDocuments,LZString});
   $('sample-rate').onchange = $('channels').onchange = () => { settings = AudioCore.options({ ...settings, sampleRate: $('sample-rate').value, channels: $('channels').value }); changed(); };
   $('renderer').onchange = () => { settings = AudioCore.options({ ...settings, renderer: $('renderer').value }); showType(); changed(); };
   $('scene').onchange = () => { settings = AudioCore.options({ ...settings, scene: $('scene').value }); changed(); };
-  $('hide-editor').onclick = () => { document.body.classList.add('editor-hidden'); $('show-editor').hidden = false; resize(); };
-  $('show-editor').onclick = () => { document.body.classList.remove('editor-hidden'); $('show-editor').hidden = true; resize(); };
+  $('hide-editor').onclick = () => tabs.select(1);
+  $('show-editor').onclick = () => tabs.select('split');
   const resize = () => { editor.resize(); player.draw(); };
   let drag = false;
   $('splitter').onpointerdown = event => { drag = true; $('splitter').setPointerCapture(event.pointerId); };
@@ -164,8 +166,9 @@ Object.assign(globalThis,{HashBinDocuments,LZString});
   $('splitter').onkeydown = event => { if (['ArrowLeft', 'ArrowRight'].includes(event.key)) { event.preventDefault(); setSplit(parseFloat($('splitter').getAttribute('aria-valuenow')) + (event.key === 'ArrowLeft' ? -2 : 2)); } };
   window.addEventListener('resize', resize);
   document.querySelector('.mobile-tabs').remove();
-  const tabs=mountMobileTabs({container:document.querySelector('.phone-bar'),panels:[{label:'Preview',panel:$('preview-pane')},{label:'Code',panel:$('editor-pane')}],onChange:index=>{document.body.dataset.tab=index?'code':'preview';resize();}});
-  for(const[index,button]of [...document.querySelectorAll('.fk-tabs button')].entries()){button.id=index?'tab-code':'tab-preview';$(index?'editor-pane':'preview-pane').setAttribute('aria-labelledby',button.id);}
+  const tabs=mountMobileTabs({desktop:true,container:document.querySelector('.phone-bar'),panels:[{label:'Code',panel:$('editor-pane')},{label:'Preview',panel:$('preview-pane')}],onChange:index=>{document.body.classList.remove('editor-hidden');$('show-editor').hidden=index!==1;document.body.dataset.tab=index===-1?'split':index?'preview':'code';resize();}});
+  for(const[index,button]of [...document.querySelectorAll('.fk-tabs button')].slice(0,2).entries()){button.id=index?'tab-preview':'tab-code';$(index?'preview-pane':'editor-pane').setAttribute('aria-labelledby',button.id);}
+  if(matchMedia('(max-width:767px)').matches)tabs.select(1);
   async function download() {
     try {
       const format = $('export-format').value, name = (result?.scene || 'scene').toLowerCase();
@@ -263,6 +266,6 @@ Object.assign(globalThis,{HashBinDocuments,LZString});
   }
   let lastNavigation=location.href;const navigate=event=>{if(event.type==='hashchange'&&event.newURL!==location.href)return;if(location.href===lastNavigation)return;lastNavigation=location.href;void loadUrl();};
   window.addEventListener('hashchange',navigate);window.addEventListener('popstate',navigate);
-  globalThis.AudioOnline={editor,client,snapshot,render,selectTab:tab=>tabs.select(tab==='code'?1:0)};
+  globalThis.AudioOnline={editor,client,snapshot,render,selectTab:tab=>tabs.select(tab==='code'?0:1)};
   await loadUrl({initial:true});
 })();

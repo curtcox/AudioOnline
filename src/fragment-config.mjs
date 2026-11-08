@@ -1,4 +1,4 @@
-import * as kit from '../vendor/fragment-kit-v0.3.3/src/index.js';
+import * as kit from '../vendor/fragment-kit-v0.3.5/src/index.js';
 import * as Core from './audio-core.js';
 import * as Files from './audio-files.js';
 import appConfig from '../fragment-kit.config.json' with {type:'json'};
@@ -39,4 +39,4 @@ export class HashBinStore extends kit.HashBinStore{
 }
 export const ShareLinks={build:({url,run,view,...doc})=>urlState.build(doc,{url,run,view}),parse:href=>{const intent=urlState.parse(href);return intent.kind==='none'?null:{...intent,...(intent.doc?fromDocument(intent.doc):{})};}};
 export const LZString={compressToEncodedURIComponent:kit.compress,decompressFromEncodedURIComponent:kit.decompress};
-export {ShareClient} from '../vendor/fragment-kit-v0.3.3/src/index.js';
+export {ShareClient} from '../vendor/fragment-kit-v0.3.5/src/index.js';
