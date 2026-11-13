@@ -1,4 +1,6 @@
-import {LocalDrafts,RenderScheduler,HashBinPanel,compactShell,createShell,mountMobileTabs,createShareDialog,createQrDialog} from '../vendor/fragment-kit-v0.3.5/src/index.js';
+import {mountClientAi,aiCallback} from './ai-client.js';
+if(aiCallback()) await new Promise(()=>{});
+import {LocalDrafts,RenderScheduler,HashBinPanel,compactShell,createShell,mountMobileTabs,createShareDialog,createQrDialog} from '../vendor/fragment-kit-v0.4.3/src/index.js';
 import {config,type,urlState,HashBinDocuments,HashBinStore,LZString,fromDocument} from './fragment-config.mjs';
 Object.assign(globalThis,{HashBinDocuments,LZString});
 /* Browser glue. The renderer, documents and exports stay independent of the UI. */
@@ -18,12 +20,13 @@ compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),sta
   globalThis.editor = editor;
   editor.setTheme('ace/theme/chrome'); editor.session.setMode('ace/mode/python');
   editor.setOptions({ showPrintMargin: false, tabSize: 4, useSoftTabs: true, useWorker: false });
+  let aiUI=null,aiHold=false;
   let settings = AudioCore.options(), files = {}, revision = 0, applying = false, result = null, saved = null;
   const FILES = { python: ['scene.py', 'Python'], abc: ['tune.abc', 'ABC notation'], zzfx: ['sounds.zzfx', 'ZzFX'], sfxr: ['sounds.sfxr', 'sfxr'], pattern: ['beat.pattern', 'pattern mini-notation'] };
   const currentType = () => settings.renderer === 'auto' ? AudioDetector.detect(editor.getValue()).type : settings.renderer;
   const snapshot = () => ({ src: editor.getValue(), type: currentType(), settings: { ...settings }, files: { ...files } });
   const fingerprint = () => JSON.stringify(snapshot());
-  const links = () => urlState.build(snapshot(),{run:!runSuppressed});
+  const links = () => urlState.build(snapshot(),{run:!runSuppressed&&!aiHold});
   const currentLink = () => saved?.fingerprint === fingerprint() ? saved.link : links().fallback;
   const safeStorage = name => { try { return window[name]; } catch (_) { return undefined; } };
   const local = safeStorage('localStorage');
@@ -117,11 +120,12 @@ compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),sta
     if (applying) return;
     revision++; client.cancel(); navigationRevision++;urlState.cancel();hashbin.cancelLoad(); saved = null; persist(true);
     setError(''); $('cancel').hidden = true; $('status').textContent = 'Waiting for edits…';
-    urlState.write(snapshot(),{run:!runSuppressed});
-    scheduler.schedule({ detect: true });
+    urlState.write(snapshot(),{run:!runSuppressed&&!aiHold});
+    if(!aiHold)scheduler.schedule({ detect: true });
   }
   function syncOptions() { $('sample-rate').value = settings.sampleRate; $('channels').value = settings.channels; $('renderer').value = settings.renderer; }
-  function apply(doc, { run = true } = {}) {
+  function apply(doc, { run = true, fromAi = false } = {}) {
+    if(!fromAi){aiUI?.cancel();aiHold=false;}
     urlState.cancel();drafts.opened();doc=fromDocument(doc);
     const nextFiles = doc.files || {}; AudioFiles.validate(nextFiles, doc.src);
     player.stop();player.result=null;result=null;$('play').disabled=true;$('loop').disabled=true;$('empty').hidden=false;showOutput('');
@@ -136,7 +140,7 @@ compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),sta
   }
   const store=new HashBinStore({legacyStorage:local});
   const hashbin=new HashBinPanel({store,urlState,container:$('extra-tools'),getSnapshot:()=>type.normalize(snapshot()),getFingerprint:fingerprint,
-    onLoad(doc,cid){navigationRevision++;apply(doc,{run:!runSuppressed});const link=cid?urlState.link(location.href,cid):links().href;saved=cid?{fingerprint:fingerprint(),link}:null;history.replaceState(null,'',link);},
+    onLoad(doc,cid){navigationRevision++;apply(doc,{run:!runSuppressed&&!aiHold});const link=cid?urlState.link(location.href,cid):links().href;saved=cid?{fingerprint:fingerprint(),link}:null;history.replaceState(null,'',link);},
     onSaved(cid,value,link){urlState.cancel();saved={fingerprint:value,link};history.replaceState(null,'',link);if(qrSave){qrSave=false;hashbin.dialog.close();qr.open(link);}}
   });
   hashbin.dialog.addEventListener('close',()=>{qrSave=false;});
@@ -149,7 +153,7 @@ compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),sta
   $('share').onclick=()=>{shell.drawer.dialog.close();share.open();};
   $('qr-open').onclick=()=>{shell.drawer.dialog.close();qr.open(currentLink());};
   editor.session.on('change', changed);
-  $('render').onclick = () => { scheduler.cancel(); revision++; client.cancel(); render(); };
+  $('render').onclick = () => { aiHold=false; scheduler.cancel(); revision++; client.cancel(); render(); };
   $('cancel').onclick = () => { revision++; scheduler.cancel(); client.cancel(); $('cancel').hidden = true; $('status').textContent = 'Cancelled'; };
   $('sample-rate').onchange = $('channels').onchange = () => { settings = AudioCore.options({ ...settings, sampleRate: $('sample-rate').value, channels: $('channels').value }); changed(); };
   $('renderer').onchange = () => { settings = AudioCore.options({ ...settings, renderer: $('renderer').value }); showType(); changed(); };
@@ -241,23 +245,24 @@ compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),sta
   window.addEventListener('pagehide', persist);
   window.addEventListener('offline-before-reload',()=>{persist();urlState.cancel();history.replaceState(null,'',currentLink());});
   async function loadUrl({initial=false}={}) {
+    aiUI?.cancel();aiHold=false;
     const own=++navigationRevision;urlState.cancel();hashbin.cancelLoad();scheduler.cancel();client.cancel();revision++;saved=null;
     try{
       if(initial)store.retireLegacyTokens().catch(()=>{});
       const parsed=urlState.parse(location.href);runSuppressed=parsed.run===false;setError('');
       if(parsed.kind==='publish'){
         const published=await store.published(location.hash);if(own!==navigationRevision)return;
-        if(published.snapshot)apply(published.snapshot,{run:!runSuppressed});
+        if(published.snapshot)apply(published.snapshot,{run:!runSuppressed&&!aiHold});
         if(published.cid)saved={fingerprint:fingerprint(),link:urlState.link(location.href,published.cid)};
         history.replaceState(null,'',saved?.link??links().href);hashbin.status.textContent=published.error||'Saved to HashBin.';
-      }else if(parsed.kind==='source')apply(parsed.doc,{run:!runSuppressed});
+      }else if(parsed.kind==='source')apply(parsed.doc,{run:!runSuppressed&&!aiHold});
       else if(parsed.kind==='cid'){
         await hashbin.load(parsed.cid);
         if(hashbin.status.textContent!=='Loaded from HashBin.')setError(hashbin.status.textContent);
       }else{
         const sample=parsed.kind==='example'?AudioExamples.catalog.find(item=>item.id===parsed.id):null;
         if(parsed.kind==='example'&&!sample)throw Error('Unknown example. Choose a sample from the gallery.');
-        apply(sample?{src:sample.source,type:sample.type||'python',files:sample.files||{}}:{src:AudioExamples.defaultSource},{run:!runSuppressed});
+        apply(sample?{src:sample.source,type:sample.type||'python',files:sample.files||{}}:{src:AudioExamples.defaultSource},{run:!runSuppressed&&!aiHold});
         if(sample)history.replaceState(null,'',links().href);
       }
       if(runSuppressed)$('status').textContent='Ready — press Render.';
@@ -267,5 +272,6 @@ compactShell({header:shell.header,toolbar:document.querySelector(".toolbar"),sta
   let lastNavigation=location.href;const navigate=event=>{if(event.type==='hashchange'&&event.newURL!==location.href)return;if(location.href===lastNavigation)return;lastNavigation=location.href;void loadUrl();};
   window.addEventListener('hashchange',navigate);window.addEventListener('popstate',navigate);
   globalThis.AudioOnline={editor,client,snapshot,render,selectTab:tab=>tabs.select(tab==='code'?0:1)};
+  aiUI=await mountClientAi({config,type,urlState,getSnapshot:()=>type.normalize(snapshot()),getFingerprint:fingerprint,container:shell.drawer.body,toolbar:document.querySelector('.toolbar'),status:message=>$('status').textContent=message,onApply:doc=>{aiHold=true;apply(doc,{run:false,fromAi:true});persist(true);$('status').textContent='Change accepted — press Render.';}});
   await loadUrl({initial:true});
 })();

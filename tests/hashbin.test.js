@@ -11,7 +11,7 @@ test('saves go through HashBin Publish with the pinned SDK and verify the return
  assert.equal((await store.publish(payload,snapshot)).cid,fullCID(payload));assert.deepEqual(options,{contentType:'application/json',fileName:'scene.json',clientState:{snapshot}});
  store.client.publish=async()=>({cid:fullCID(payload+' ')});await assert.rejects(store.publish(payload,snapshot),/does not match its CID/);
  await assert.rejects(new HashBinStore({clientId:''}).init(),/registered client ID/);
- assert.match(require('node:fs').readFileSync('vendor/fragment-kit-v0.3.5/src/hashbin/store.js','utf8'),/hashbin-sdk-v0\.4\.0/);
+ assert.match(require('node:fs').readFileSync('vendor/fragment-kit-v0.4.3/src/hashbin/store.js','utf8'),/hashbin-sdk-v0\.4\.0/);
 });
 test('redirect saves restore source and files after approval or cancellation; legacy tokens are revoked',async()=>{
  const transactionStorage=storage(),snapshot={src:'from audio import *',files:{},settings:{sampleRate:44100}},payload=Docs.serialize(snapshot);let outcome='approve';
@@ -37,9 +37,9 @@ test('vendored SDK files are the exact v0.4.0 release, and the CSP pins its sand
  // Hashes from https://hashbin.org/sdk/v0.4.0/integrity.json.
  const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
  const sri=file=>'sha384-'+crypto.createHash('sha384').update(fs.readFileSync(path.join(__dirname,'..',file))).digest('base64');
- assert.equal(sri('vendor/fragment-kit-v0.3.5/vendor/hashbin-sdk-v0.4.0.mjs'),'sha384-zzmaXw5svWRp0YF//G5ytyeqEowixccM/hHVDth46FnGrIlPS7fPki5vbhv+bWCr');
+ assert.equal(sri('vendor/fragment-kit-v0.4.3/vendor/hashbin-sdk-v0.4.0.mjs'),'sha384-zzmaXw5svWRp0YF//G5ytyeqEowixccM/hHVDth46FnGrIlPS7fPki5vbhv+bWCr');
 
- const sdk=fs.readFileSync(path.join(__dirname,'../vendor/fragment-kit-v0.3.5/vendor/hashbin-sdk-v0.4.0.mjs'),'utf8'),html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+ const sdk=fs.readFileSync(path.join(__dirname,'../vendor/fragment-kit-v0.4.3/vendor/hashbin-sdk-v0.4.0.mjs'),'utf8'),html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
  const bootstrap=/SANDBOX_BOOTSTRAP = (".*?");\n/.exec(sdk)[1],hash="'sha256-"+crypto.createHash('sha256').update(JSON.parse(bootstrap)).digest('base64')+"'";
  const csp=/Content-Security-Policy" content="([^"]+)"/.exec(html)[1],scripts=/script-src ([^;]+)/.exec(csp)[1].split(' ');
  assert.ok(scripts.includes(hash),hash);assert.ok(!scripts.includes("'unsafe-inline'")&&!scripts.includes("'unsafe-eval'"));

@@ -3,7 +3,7 @@ import {createRequire} from 'node:module';
 const manifest=createRequire(import.meta.url)('./offline-assets.js');
 test.setTimeout(120000);
 export default {
- ready:'body[data-ready="true"]',editor:'#editor',status:'#error',draftKey:'audioonline:document',more:'#more-toggle',share:'#share',qr:'#qr-open',tabs:['Code','Preview'],example:'hello',cachePrefix:manifest.version,offlineAsset:'src/app.css',kitURL:'./vendor/fragment-kit-v0.3.5/src/index.js',
+ ready:'body[data-ready="true"]',editor:'#editor',status:'#error',draftKey:'audioonline:document',more:'#more-toggle',share:'#share',qr:'#qr-open',tabs:['Code','Preview'],example:'hello',cachePrefix:manifest.version,offlineAsset:'src/app.css',kitURL:'./vendor/fragment-kit-v0.4.3/src/index.js',
  isWrittenURL:href=>{const url=new URL(href);return url.searchParams.has('doc')||url.searchParams.has('compressed');},
  getSource:page=>page.evaluate(()=>AudioOnline.editor.getValue()),getDocument:page=>page.evaluate(()=>AudioOnline.snapshot()),edit:(page,src)=>page.evaluate(src=>AudioOnline.editor.setValue(src,-1),src),
  openMore:async page=>{if(!await page.locator('#fk-more-drawer').isVisible())await page.locator('#more-toggle').click();},

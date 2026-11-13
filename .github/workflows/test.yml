@@ -9,12 +9,12 @@ jobs:
   test:
     uses: curtcox/Tools-for-pages-with-state-in-URL-fragments/.github/workflows/test.yml@v2
     with:
-      kit-path: vendor/fragment-kit-v0.3.5
+      kit-path: vendor/fragment-kit-v0.4.3
       contract-config: testing-contract.config.mjs
       pre-test: node scripts/golden.mjs --check
       server-command: PORT=8000 node tests/browser/server.cjs
-      browser-command: node tests/browser/url-state.cjs && node tests/browser/legacy-publish.cjs && node tests/browser/all.cjs http://127.0.0.1:8000/ "$BROWSER" && node scripts/fetch-neural.mjs && node tests/browser/neural.cjs http://127.0.0.1:8000/ "$BROWSER"
+      browser-command: node tests/browser/ai.mjs && node tests/browser/ai.mjs && node tests/browser/ai.mjs && node tests/browser/ai.mjs && node tests/browser/url-state.cjs && node tests/browser/legacy-publish.cjs && node tests/browser/all.cjs http://127.0.0.1:8000/ "$BROWSER" && node scripts/fetch-neural.mjs && node tests/browser/neural.cjs http://127.0.0.1:8000/ "$BROWSER"
   kit:
     uses: curtcox/Tools-for-pages-with-state-in-URL-fragments/.github/workflows/kit-check.yml@v2
     with:
-      kit-path: vendor/fragment-kit-v0.3.5
+      kit-path: vendor/fragment-kit-v0.4.3

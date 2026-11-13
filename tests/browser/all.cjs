@@ -64,7 +64,7 @@ function cidFor(text) {
 // Desktop Firefox (BiDi) saves into a real folder and numbers repeated names: name(1).ext.
 const named = file => new RegExp('^' + file.replace(/\./g, '(?:\\(\\d+\\))?\\.') + '$');
 const isCIDHash = hash => Docs.isCID(hash.slice(1));
-async function run(label, task) { const start = Date.now(); await task(); console.log(`${name}: ${label} (${Date.now() - start} ms)`); }
+async function run(label, task) { if(process.env.AUDIO_BROWSER_CASE&&!label.includes(process.env.AUDIO_BROWSER_CASE))return;const start = Date.now(); await task(); console.log(`${name}: ${label} (${Date.now() - start} ms)`); }
 (async () => {
   // FIREFOX_PATH drives a desktop Firefox over WebDriver BiDi where Playwright's build cannot launch (macOS 27).
   browser = name === 'firefox' && process.env.FIREFOX_PATH
@@ -284,7 +284,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       async handlePublishCallback({hash}){const clientState=JSON.parse(sessionStorage.getItem('test:state'));return {cid:new URLSearchParams(hash.slice(1)).get('cid'),clientState};}
       async disconnect(){localStorage.removeItem('hashbin:tokens:test-client');localStorage.setItem('test:revoked','yes');}
     }`;
-    await auth.route('**/vendor/fragment-kit-v0.3.5/vendor/hashbin-sdk-v0.4.0.mjs', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
+    await auth.route('**/vendor/fragment-kit-v0.4.3/vendor/hashbin-sdk-v0.4.0.mjs', route => route.fulfill({ contentType: 'application/javascript', body: sdk }));
     await auth.addInitScript(() => {
       if (window !== window.top) return;
       // Firefox over BiDi also runs this in other documents where storage throws SecurityError.
@@ -392,14 +392,15 @@ async function run(label, task) { const start = Date.now(); await task(); consol
     const fixture=require('./server.cjs').createServer(),server=fixture.server;
     const offlineBase=(await fixture.start())+'/';
     const { context: c, page: p } = await context({ serviceWorkers: 'allow' });
+    p.on('requestfailed',request=>console.error('Offline request failure:',request.url(),request.failure()?.errorText));p.on('console',message=>{if(message.type()==='error')console.error('Offline console:',message.text().slice(0,400));});
     try {
       await p.goto(offlineBase); await rendered(p);
       await p.waitForFunction(() => document.getElementById('offline-status').textContent === 'Available offline', null, { timeout: 120000 });
       await p.waitForFunction(() => !!navigator.serviceWorker.controller);
       await p.reload(); await rendered(p);
       // Anything on this origin can write Cache Storage; altered entries are never served.
-      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('vendor/fragment-kit-v0.3.5/src/qr/encode.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
-      assert.equal(await p.evaluate(async()=>{const{OfflineClient}=await import('./vendor/fragment-kit-v0.3.5/src/index.js');return(await new OfflineClient().status()).ready;}),false);
+      await p.evaluate(async () => { const cache = await caches.open((await caches.keys()).find(name => name.startsWith('audioonline-'))); await cache.put(new URL('vendor/fragment-kit-v0.4.3/src/qr/encode.js', location.href).href, new Response('globalThis.poisonedCache=true;', { headers: { 'Content-Type': 'text/javascript' } })); });
+      assert.equal(await p.evaluate(async()=>{const{OfflineClient}=await import('./vendor/fragment-kit-v0.4.3/src/index.js');return(await new OfflineClient().status()).ready;}),false);
       await p.reload(); await rendered(p); assert.equal(await p.evaluate(() => globalThis.poisonedCache), undefined);
       // The shared core refetches and verifies a damaged requested module. An
       // unused damaged document exercises explicit repair through the app UI.
@@ -408,7 +409,7 @@ async function run(label, task) { const start = Date.now(); await task(); consol
       await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
       await assert.rejects(fetch(offlineBase));
       await c.route(AudioCore.PYODIDE_URL + '**', route => route.abort());
-      await p.reload(); await rendered(p);
+      await p.reload();try{await rendered(p);}catch(error){console.error('Offline render diagnostic:',await p.locator('#status').textContent(),await p.locator('#error').textContent(),await p.evaluate(()=>({online:navigator.onLine,iframes:[...document.querySelectorAll('iframe')].map(frame=>({src:frame.src,sandbox:frame.getAttribute('sandbox')})),clientKeys:Object.keys(globalThis.AudioOnline?.client??{}),workerKeys:Object.keys(globalThis.AudioOnline?.client?.worker??{})})),errors);throw error;}
       await edit(p, example('numpy-glide').source);
       assert.equal(await pageHash(p), golden['numpy-glide'].hash, 'numpy works offline');
       await edit(p, example('narrated-intro').source);

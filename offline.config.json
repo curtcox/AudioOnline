@@ -68,11 +68,14 @@
     "vendor/zzfx",
     "vendor/jsfxr",
     "vendor/svoxpico",
-    "vendor/fragment-kit-v0.3.5/src",
-    "vendor/fragment-kit-v0.3.5/vendor",
+    "vendor/fragment-kit-v0.4.3/src",
+    "vendor/fragment-kit-v0.4.3/vendor",
     "vendor/LICENSE-lz-string",
     "vendor/PROVENANCE.md",
-    "vendor/neural"
+    "vendor/neural",
+    "ai-suite.json",
+    "ai-comparison.json",
+    "src/ai-client.js"
   ],
   "remote": {
     "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs": "6f1d60f7bf529beb300f0f47983c921d3982363640ba20af0e38efdddbc66109",

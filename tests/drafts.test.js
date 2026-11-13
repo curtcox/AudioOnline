@@ -1,5 +1,5 @@
 const test = require('node:test'), assert = require('node:assert/strict');
-const {LocalDrafts} = require('../vendor/fragment-kit-v0.3.5/src/index.js');
+const {LocalDrafts} = require('../vendor/fragment-kit-v0.4.3/src/index.js');
 const document = src => ({ src, files: { 'data.txt': 'input' }, settings: { enabled: false } });
 const memory = () => { const values = new Map(); return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value) }; };
 test('opening and running a link leaves saved work intact; editing retains previous documents', () => {
